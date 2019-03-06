@@ -9,9 +9,12 @@ int ARG_CONTROL=1;
 int sizepathfun(char *path){
     int size=0;
     struct stat st;
-    if(stat(path,&st)>=0){
+    if(lstat(path,&st)>=0){
 		size=st.st_size;
-	} 
+    } 
+    if (S_ISLNK(st.st_mode)){
+	    return -1;
+    }
     return size;
 }
 
@@ -37,6 +40,10 @@ int depthFirstApply(char *path,int pathfun (char *path1)){
     sprintf(filePath, "%s/%s", path , dit->d_name);
     
     size=pathfun(filePath);
+    if(size==-1){
+	printf("Special File %s \n",dit->d_name);
+	size=0;
+    }
     
     /*if(DT_DIR!=dit->d_type){
 	printf("%s",path);
@@ -47,13 +54,14 @@ int depthFirstApply(char *path,int pathfun (char *path1)){
     
     if (DT_DIR==dit->d_type && ARG_CONTROL==1)
     {
-        int directory_size=depthFirstApply(filePath,pathfun);
-        total_size=total_size+directory_size;
-        printf("%d \t \t %s \n",directory_size/1024,filePath);
+	
+		int directory_size=depthFirstApply(filePath,pathfun);
+       		total_size=total_size+directory_size;	
+		printf("%d \t \t %s \n",directory_size/1024,filePath);
+	       
     }
     else if(DT_DIR==dit->d_type && ARG_CONTROL==2){
   	int directory_size=depthFirstApply(filePath,pathfun);
-        //total_size=total_size+directory_size;
         printf("%d \t \t %s \n",directory_size/1024,filePath);
     }
     else{
@@ -68,9 +76,9 @@ int depthFirstApply(char *path,int pathfun (char *path1)){
 int main(int argc, char *argv[])
 {
    
-    if (argc==3 && (strcmp(argv[2],"[-z]")==0)){
+   if (argc==3 && (strcmp(argv[1],"[-z]")==0)){
 	ARG_CONTROL=2;
-	int total_size=depthFirstApply(argv[1],sizepathfun);
+	int total_size=depthFirstApply(argv[2],sizepathfun);
     	total_size=total_size/1024;
    	printf("%d \t \t %s \n",total_size,argv[1]);
     }
