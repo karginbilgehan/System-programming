@@ -12,7 +12,7 @@ int sizepathfun(char *path){
     if(lstat(path,&st)>=0){
 		size=st.st_size;
     } 
-    if (S_ISLNK(st.st_mode)){
+    if (!(S_ISREG(st.st_mode)) && !(S_ISDIR(st.st_mode))){
 	    return -1;
     }
     return size;
@@ -26,9 +26,10 @@ int depthFirstApply(char *path,int pathfun (char *path1)){
  int size=0;
  int total_size=0;
  
- if (directory == 0){
-       return 0;
- }
+  if (directory == NULL){
+	printf("%s: This directory can not be open.\n",path);       
+	return -1;
+  }
  
  
   while((dit = readdir(directory)) != NULL ){
@@ -52,24 +53,29 @@ int depthFirstApply(char *path,int pathfun (char *path1)){
     	printf("size: %d \n",size);
     }*/
     
-    if (DT_DIR==dit->d_type && ARG_CONTROL==1)
+    if (DT_DIR==dit->d_type && ARG_CONTROL==2)
     {
 	
-		int directory_size=depthFirstApply(filePath,pathfun);
-       		total_size=total_size+directory_size;	
+	int directory_size=depthFirstApply(filePath,pathfun);
+		
+	if(directory_size!=-1){
 		printf("%d \t \t %s \n",directory_size/1024,filePath);
-	       
+		total_size=total_size+directory_size;	
+	}		
+	
     }
-    else if(DT_DIR==dit->d_type && ARG_CONTROL==2){
+    else if(DT_DIR==dit->d_type && ARG_CONTROL==1){ // -z parametresi olmayan çağrı için
   	int directory_size=depthFirstApply(filePath,pathfun);
-        printf("%d \t \t %s \n",directory_size/1024,filePath);
+        if(directory_size!=-1){
+		printf("%d \t \t %s \n",directory_size/1024,filePath);	
+	}
     }
-    else{
+    else{//txt vs dosyalari için
         total_size=size+total_size;
     }
     
   }
-   
+    closedir(directory);
     return total_size;
 }
 
@@ -79,14 +85,19 @@ int main(int argc, char *argv[])
    if (argc==3 && (strcmp(argv[1],"[-z]")==0)){
 	ARG_CONTROL=2;
 	int total_size=depthFirstApply(argv[2],sizepathfun);
-    	total_size=total_size/1024;
-   	printf("%d \t \t %s \n",total_size,argv[1]);
+	if(total_size!=-1){
+		total_size=total_size/1024;
+		printf("%d \t \t %s \n",total_size,argv[2]);
+	}    	
+	
     }
-    else 
+    else if(argc==2)
     {
 	int total_size=depthFirstApply(argv[1],sizepathfun);
-    	total_size=total_size/1024;
-   	printf("%d \t \t %s \n",total_size,argv[1]);
+    	if(total_size!=-1){
+		total_size=total_size/1024;
+		printf("%d \t \t %s \n",total_size,argv[1]);
+	} 
     }   
     return 0;
 }
