@@ -9,19 +9,22 @@ int ARG_CONTROL=1;
 int sizepathfun(char *path){
     int size=0;
     struct stat st;
+    if(lstat(path,&st)<0){
+	  return -2;
+    }
     if(lstat(path,&st)>=0){
-		size=st.st_size;
+	  size=st.st_size;
     } 
     if (!(S_ISREG(st.st_mode)) && !(S_ISDIR(st.st_mode))){
-	    return -1;
+	  return -1;
     }
     return size;
 }
 
-int depthFirstApply(char *path,int pathfun (char *path1)){
+int postOrderApply(char *path,int pathfun (char *path1)){
  
  DIR *directory=opendir(path);
- struct dirent *dit;
+ struct dirent *currentDir;
  char filePath[1024];
  int size=0;
  int total_size=0;
@@ -32,41 +35,34 @@ int depthFirstApply(char *path,int pathfun (char *path1)){
   }
  
  
-  while((dit = readdir(directory)) != NULL ){
+  while((currentDir = readdir(directory)) != NULL ){
 
 
-    if ( (strcmp(dit->d_name, ".") == 0) || (strcmp(dit->d_name, "..") == 0) )
+    if ( (strcmp(currentDir->d_name, ".") == 0) || (strcmp(currentDir->d_name, "..") == 0) )
         continue;
     
-    sprintf(filePath, "%s/%s", path , dit->d_name);
+    sprintf(filePath, "%s/%s", path , currentDir->d_name);
     
     size=pathfun(filePath);
     if(size==-1){
-	printf("Special File %s \n",dit->d_name);
+	printf("Special file %s \n",currentDir->d_name);
 	size=0;
     }
     
-    /*if(DT_DIR!=dit->d_type){
-	printf("%s",path);
-    	printf("-->");
-    	printf("%s\t\t",dit->d_name);
-    	printf("size: %d \n",size);
-    }*/
-    
-    if (DT_DIR==dit->d_type && ARG_CONTROL==2)
+    if (DT_DIR==currentDir->d_type && ARG_CONTROL==2)
     {
 	
-	int directory_size=depthFirstApply(filePath,pathfun);
+	int directory_size=postOrderApply(filePath,pathfun);
 		
-	if(directory_size!=-1){
+	if(directory_size!=-1 || directory_size!=-2){
 		printf("%d \t \t %s \n",directory_size/1024,filePath);
 		total_size=total_size+directory_size;	
 	}		
 	
     }
-    else if(DT_DIR==dit->d_type && ARG_CONTROL==1){ // -z parametresi olmayan çağrı için
-  	int directory_size=depthFirstApply(filePath,pathfun);
-        if(directory_size!=-1){
+    else if(DT_DIR==currentDir->d_type && ARG_CONTROL==1){ // -z parametresi olmayan çağrı için
+  	int directory_size=postOrderApply(filePath,pathfun);
+        if(directory_size!=-1 || directory_size!=-2){
 		printf("%d \t \t %s \n",directory_size/1024,filePath);	
 	}
     }
@@ -82,9 +78,9 @@ int depthFirstApply(char *path,int pathfun (char *path1)){
 int main(int argc, char *argv[])
 {
    
-   if (argc==3 && (strcmp(argv[1],"[-z]")==0)){
+   if (argc==3 && (strcmp(argv[1],"-z")==0)){
 	ARG_CONTROL=2;
-	int total_size=depthFirstApply(argv[2],sizepathfun);
+	int total_size=postOrderApply(argv[2],sizepathfun);
 	if(total_size!=-1){
 		total_size=total_size/1024;
 		printf("%d \t \t %s \n",total_size,argv[2]);
@@ -93,11 +89,15 @@ int main(int argc, char *argv[])
     }
     else if(argc==2)
     {
-	int total_size=depthFirstApply(argv[1],sizepathfun);
+	int total_size=postOrderApply(argv[1],sizepathfun);
     	if(total_size!=-1){
 		total_size=total_size/1024;
 		printf("%d \t \t %s \n",total_size,argv[1]);
 	} 
+    }
+    else{
+    	printf("This usage is wrong. There must be 2 or 3 argument. \n");
+	printf("Usage: ./buNeDu -z path_name or ./buNeDu path_name \n");
     }   
     return 0;
 }
