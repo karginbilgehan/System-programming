@@ -14,8 +14,12 @@ int ARG_CONTROL=1;//it is necessary to control -z argument.
 int main(int argc, char *argv[])
 {
    pid_t pid;
-   int fd;	
+   int fd,removeControl;	
    char toFile[1024];
+   removeControl=remove("151044008sizes.txt");
+   if (removeControl<0){
+	printf("File can not removed. \n");
+   }
    if (argc==3 && (strcmp(argv[1],"-z")==0)){//it is for using with -z argument
 	ARG_CONTROL=2;
 	int total_size=postOrderApply(argv[2],sizepathfun);
@@ -51,8 +55,16 @@ int main(int argc, char *argv[])
     else{// This block is for error situation.
     		printf("This usage is wrong. There must be 2 or 3 argument. \n");
 		printf("Usage: ./buNeDu -z path_name or ./buNeDu path_name \n");
-    }   
+    }
+    int temp_Size=sizeof(toFile);
+    char buffer[temp_Size];   
+    fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_RDONLY, S_IRWXU);
+    read(fd,buffer,temp_Size);
+    close(fd);
+    printf("------------------------------AFTER READ-------------------------------\n");
+    printf("%s",buffer);
     return 0;
+
 }
 // This function return the size of a given file or 
 // return -1, if the file is a special like link or pipe or 
