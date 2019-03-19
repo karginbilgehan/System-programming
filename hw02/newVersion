@@ -13,58 +13,99 @@ int ARG_CONTROL=1;//it is necessary to control -z argument.
 
 int main(int argc, char *argv[])
 {
-   pid_t pid;
+   pid_t pid,childPid;
    int fd,removeControl;	
    char toFile[1024];
+   struct flock lock;
+  
+   
    removeControl=remove("151044008sizes.txt");
+   
    if (removeControl<0){
 	printf("File can not removed. \n");
    }
-   if (argc==3 && (strcmp(argv[1],"-z")==0)){//it is for using with -z argument
-	ARG_CONTROL=2;
-	int total_size=postOrderApply(argv[2],sizepathfun);
-	if(total_size!=-1){
-		total_size=total_size/1024;
-		pid=getpid();		
-		printf("%d \t \t %d \t \t %s \n",pid,total_size,argv[2]);
-		sprintf(toFile,"%d \t \t %d \t \t %s \n",pid,total_size,argv[2]);
-		int temp_size=strlen(toFile);
-		fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_WRONLY, S_IRWXU);
-		write(fd,toFile,temp_size);
-		close(fd);
+   
+   childPid=fork();
+   if(childPid<0){
+	printf("Process can not created. \n");
+   }
+   else if(childPid==0){//child process
+		if (argc==3 && (strcmp(argv[1],"-z")==0)){//it is for using with -z argument
+			ARG_CONTROL=2;
+			int total_size=postOrderApply(argv[2],sizepathfun);
+			if(total_size!=-1){
+				total_size=total_size/1024;
+				childPid=getpid();		
+				//printf("%d \t \t %d \t \t %s \n",pid,total_size,argv[2]);
+				sprintf(toFile,"%d \t \t %d \t \t %s \n",childPid,total_size,argv[2]);
+				int temp_size=strlen(toFile);
+				fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_WRONLY, S_IRWXU);
+				memset (&lock, 0, sizeof(lock));
+		 		lock.l_type = F_WRLCK;
+		 		fcntl (fd, F_SETLKW, &lock);
+				write(fd,toFile,temp_size);
+				lock.l_type = F_UNLCK;
+		 		fcntl (fd, F_SETLKW, &lock);
+				close(fd);
+			}    	
+		}
+    		else if(argc==2) // it is for using without -z argument. Only two parameters
+    		{
+			int total_size=postOrderApply(argv[1],sizepathfun);
+	
+		    	if(total_size!=-1){
+				total_size=total_size/1024;
+				childPid=getpid();
+				//printf("%d \t \t %d \t \t %s \n",pid,total_size,argv[1]);
+				sprintf(toFile,"%d \t \t %d \t \t %s \n",childPid,total_size,argv[1]);
+				int temp_size=strlen(toFile);
+				fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_WRONLY, S_IRWXU);
+				memset (&lock, 0, sizeof(lock));
+		 		lock.l_type = F_WRLCK;
+		 		fcntl (fd, F_SETLKW, &lock);
+				write(fd,toFile,temp_size);
+				lock.l_type = F_UNLCK;
+		 		fcntl (fd, F_SETLKW, &lock);
+				close(fd);
 		
-	}    	
-	
-    }
-    else if(argc==2) // it is for using without -z argument. Only two parameters
-    {
-	int total_size=postOrderApply(argv[1],sizepathfun);
-	
-    	if(total_size!=-1){
-		total_size=total_size/1024;
+			} 
+    		}	
+   		
+		else{// This block is for error situation.
+	    		printf("This usage is wrong. There must be 2 or 3 argument. \n");
+			printf("Usage: ./buNeDu -z path_name or ./buNeDu path_name \n");
+    		}
+   	
+   }
+   
+   else{//parent process
+		waitpid(childPid,NULL,0);
 		pid=getpid();
-		printf("%d \t \t %d \t \t %s \n",pid,total_size,argv[1]);
-		sprintf(toFile,"%d \t \t %d \t \t %s \n",pid,total_size,argv[1]);
+		sprintf(toFile,"4 child processes created. Main process is %d. \n",pid);
 		int temp_size=strlen(toFile);
 		fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_WRONLY, S_IRWXU);
+		memset (&lock, 0, sizeof(lock));
+		lock.l_type = F_WRLCK;
+		fcntl (fd, F_SETLKW, &lock);
 		write(fd,toFile,temp_size);
+		lock.l_type = F_UNLCK;
+		fcntl (fd, F_SETLKW, &lock);
+		close(fd);	
+		  //This block read the file and print the output on the screen
+		int temp_Size=sizeof(toFile);
+		char buffer[temp_Size];   
+		fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_RDONLY, S_IRWXU);
+		read(fd,buffer,temp_Size);
 		close(fd);
+		printf("------------------------------AFTER READ-------------------------------\n");
+		printf("%s",buffer);
 		
-	} 
-    }
-    else{// This block is for error situation.
-    		printf("This usage is wrong. There must be 2 or 3 argument. \n");
-		printf("Usage: ./buNeDu -z path_name or ./buNeDu path_name \n");
-    }
-    int temp_Size=sizeof(toFile);
-    char buffer[temp_Size];   
-    fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_RDONLY, S_IRWXU);
-    read(fd,buffer,temp_Size);
-    close(fd);
-    printf("------------------------------AFTER READ-------------------------------\n");
-    printf("%s",buffer);
-    return 0;
 
+   }
+   
+	return 0;
+    
+  
 }
 // This function return the size of a given file or 
 // return -1, if the file is a special like link or pipe or 
@@ -94,6 +135,8 @@ int postOrderApply(char *path,int pathfun (char *path1)){
  int size=0;
  int total_size=0;
  pid_t childPid,id;
+ struct flock lock;
+  
   if (directory == NULL){
 	printf("%s: This directory can not be open.\n",path);       
 	return -1;
@@ -112,11 +155,17 @@ int postOrderApply(char *path,int pathfun (char *path1)){
 	int fd;	
 	char toFile[1024];
 	id=getpid();
-	printf("%d \t \t \t \t Special file %s \n",id,currentDir->d_name);
+	//printf("%d \t \t \t \t Special file %s \n",id,currentDir->d_name);
 	sprintf(toFile,"%d \t \t \t \t Special file %s \n",id,currentDir->d_name);
-	int temp_size=strlen(toFile);	
+	int temp_size=strlen(toFile);
+		
 	fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_WRONLY, S_IRWXU);
+	memset (&lock, 0, sizeof(lock));
+ 	lock.l_type = F_WRLCK;
+ 	fcntl (fd, F_SETLKW, &lock);	
 	write(fd,toFile,temp_size);
+	lock.l_type = F_UNLCK;
+ 	fcntl (fd, F_SETLKW, &lock);
 	close(fd);	
 	size=0;
     }
@@ -137,10 +186,15 @@ int postOrderApply(char *path,int pathfun (char *path1)){
 			close(fds[1]);
 			id=getpid();
 			sprintf(toFile,"%d \t \t %d \t \t %s \n",id,directory_size/1024,filePath);
-			printf("%s",toFile);
+			//printf("%s",toFile);
 			int size=strlen(toFile);	
 			fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_WRONLY, S_IRWXU);
+			memset (&lock, 0, sizeof(lock));
+ 			lock.l_type = F_WRLCK;
+ 			fcntl (fd, F_SETLKW, &lock);
 			write(fd,toFile,size);
+			lock.l_type = F_UNLCK;
+ 			fcntl (fd, F_SETLKW, &lock);
 			close(fd);
 			//printf("%d \t \t %d \t \t %s \n",id,directory_size/1024,filePath);
 			//total_size=total_size+directory_size;	
@@ -150,7 +204,6 @@ int postOrderApply(char *path,int pathfun (char *path1)){
 	else{
 		waitpid(childPid,NULL,0);
 		int directory_size;	
-		
 		close(fds[1]);
 		read(fds[0],&directory_size,sizeof(directory_size));
 		close(fds[0]);
@@ -170,11 +223,16 @@ int postOrderApply(char *path,int pathfun (char *path1)){
         	if(directory_size!=-1 || directory_size!=-2){
 			id=getpid();
 			sprintf(toFile,"%d \t \t %d \t \t %s \n",id,directory_size/1024,filePath);
-			printf("%s",toFile);
+			//printf("%s",toFile);
 			//printf("%d \t \t %d \t \t %s \n",id,directory_size/1024,filePath);
 			int size=strlen(toFile);
 			fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_WRONLY, S_IRWXU);
+			memset (&lock, 0, sizeof(lock));
+ 			lock.l_type = F_WRLCK;
+ 			fcntl (fd, F_SETLKW, &lock);
 			write(fd,toFile,size);
+			lock.l_type = F_UNLCK;
+ 			fcntl (fd, F_SETLKW, &lock);
 			close(fd);	
 		}
 		_exit(0);
