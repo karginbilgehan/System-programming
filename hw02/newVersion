@@ -14,18 +14,11 @@ int ARG_CONTROL=1;//it is necessary to control -z argument.
 int main(int argc, char *argv[])
 {
    pid_t pid,childPid;
-   int fd,removeControl;	
+   int fd;	
    char toFile[1024];
    struct flock lock;
   
-   
-   removeControl=remove("151044008sizes.txt");
-   
-   if (removeControl<0){
-	printf("File can not removed. \n");
-   }
-   
-   
+   remove("151044008sizes.txt");
    childPid=fork();
    if(childPid<0){
 	printf("Process can not created. \n");
@@ -92,20 +85,21 @@ int main(int argc, char *argv[])
 		lock.l_type = F_UNLCK;
 		fcntl (fd, F_SETLKW, &lock);
 		close(fd);	
-		  //This block read the file and print the output on the screen
-		
-		/*char *buffer;
-		buffer = (char *)malloc(sizeof(char));
+		  
+                //This block read the file and print the output on the screen
+		char *buffer;
+		buffer = (char *)malloc(512*sizeof(char));
 		int temp_Size=sizeof(toFile);
 		//char buffer[temp_Size];   
 		fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_RDONLY, S_IRWXU);
 		read(fd,buffer,temp_Size);
 		close(fd);
 		
-		printf("------------------------------AFTER READ-------------------------------\n");
+		//printf("------------------------------AFTER READ-------------------------------\n");
 		printf("%s",buffer);
-		free(buffer);*/
-
+		printf("-----------------------------TO FIND TOTAL PROCESSES-------------------------------\n");
+		totalProcess(buffer);
+		free(buffer);
    }
    
 	return 0;
@@ -180,7 +174,7 @@ int postOrderApply(char *path,int pathfun (char *path1)){
 	//int fds[2];
 	//pipe (fds);
 	int fd;
-	FILE *fp ;
+	FILE *fp;
 	char toFile[1024];
 	childPid=fork();
 	if(childPid==0){
@@ -188,11 +182,10 @@ int postOrderApply(char *path,int pathfun (char *path1)){
 		if(directory_size!=-1 || directory_size!=-2){
 			
 			fp=fopen("directorySize.txt", "a+");
-			if ( fp == NULL )
+			if (fp == NULL)
   			{
-       			        printf( "Could not open file test.c" ) ;
-        			return 1;
-    			}
+       			        printf( "Could not open file. \n" ) ;
+        		}
 			
 			fprintf(fp,"%d",directory_size);
 			
@@ -223,8 +216,8 @@ int postOrderApply(char *path,int pathfun (char *path1)){
 		fp=fopen("directorySize.txt", "a+");
 			if ( fp == NULL )
   			{
-       			        printf( "Could not open file test.c" ) ;
-        			return 1;
+       			        printf( "Could not open file." ) ;
+        			
     			}
 		fscanf(fp,"%d",&dir_size);
 		fclose(fp);
@@ -279,14 +272,35 @@ int postOrderApply(char *path,int pathfun (char *path1)){
     return total_size;
 }
 
-int findTotalSize(){
-	char buff[10];
-    	FILE *f = fopen("151044008sizes.txt", "r");
-    	fgets(buff, 10, f);
-    	printf("String read: %s\n", buff);
-    	fclose(f);
-  
-	return 0;
+int totalProcess(char * buff){
+	
+	int i=0;
+	
+	while(i<200){
+		if(buff[i]=='\n'){
+			printf("\n");	
+			++i;		
+		}	
+		while(buff[i]!='\n'){
+			
+			if(buff[i]==' '){
+				i++;
+				break;
+			}
+			printf("%c",buff[i]);
+			i++;
+			//printf("i: %d \n",i);		
+		}
+		
+	}
+	
+	return i;
 
 }
+
+
+
+
+
+
 	
