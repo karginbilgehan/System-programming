@@ -25,6 +25,7 @@ int main(int argc, char *argv[])
 	printf("File can not removed. \n");
    }
    
+   
    childPid=fork();
    if(childPid<0){
 	printf("Process can not created. \n");
@@ -92,14 +93,18 @@ int main(int argc, char *argv[])
 		fcntl (fd, F_SETLKW, &lock);
 		close(fd);	
 		  //This block read the file and print the output on the screen
+		
+		/*char *buffer;
+		buffer = (char *)malloc(sizeof(char));
 		int temp_Size=sizeof(toFile);
-		char buffer[temp_Size];   
+		//char buffer[temp_Size];   
 		fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_RDONLY, S_IRWXU);
 		read(fd,buffer,temp_Size);
 		close(fd);
+		
 		printf("------------------------------AFTER READ-------------------------------\n");
 		printf("%s",buffer);
-		
+		free(buffer);*/
 
    }
    
@@ -172,18 +177,29 @@ int postOrderApply(char *path,int pathfun (char *path1)){
     
     if (DT_DIR==currentDir->d_type && ARG_CONTROL==2) // it is to control using with 3 argument like ./buNeDu -z A.
     {
-	int fds[2];
-	pipe (fds);
+	//int fds[2];
+	//pipe (fds);
 	int fd;
+	FILE *fp ;
 	char toFile[1024];
 	childPid=fork();
 	if(childPid==0){
 		int directory_size=postOrderApply(filePath,pathfun);
 		if(directory_size!=-1 || directory_size!=-2){
 			
-			close (fds[0]); //Okuma kısmı kapatıldı
-			write(fds[1],&directory_size,sizeof(directory_size));
-			close(fds[1]);
+			fp=fopen("directorySize.txt", "a+");
+			if ( fp == NULL )
+  			{
+       			        printf( "Could not open file test.c" ) ;
+        			return 1;
+    			}
+			
+			fprintf(fp,"%d",directory_size);
+			
+			fclose(fp);
+			//close (fds[0]); //Okuma kısmı kapatıldı
+			//write(fds[1],&directory_size,sizeof(directory_size));
+			//close(fds[1]);
 			id=getpid();
 			sprintf(toFile,"%d \t \t %d \t \t %s \n",id,directory_size/1024,filePath);
 			//printf("%s",toFile);
@@ -203,11 +219,21 @@ int postOrderApply(char *path,int pathfun (char *path1)){
 	}
 	else{
 		waitpid(childPid,NULL,0);
-		int directory_size;	
-		close(fds[1]);
-		read(fds[0],&directory_size,sizeof(directory_size));
-		close(fds[0]);
-		total_size=total_size+directory_size;	
+		int dir_size;
+		fp=fopen("directorySize.txt", "a+");
+			if ( fp == NULL )
+  			{
+       			        printf( "Could not open file test.c" ) ;
+        			return 1;
+    			}
+		fscanf(fp,"%d",&dir_size);
+		fclose(fp);
+		remove("directorySize.txt");
+		//int directory_size;	
+		//close(fds[1]);
+		//read(fds[0],&directory_size,sizeof(directory_size));
+		//close(fds[0]);
+		total_size=total_size+dir_size;	
 		
 	}
 		
@@ -253,4 +279,14 @@ int postOrderApply(char *path,int pathfun (char *path1)){
     return total_size;
 }
 
+int findTotalSize(){
+	char buff[10];
+    	FILE *f = fopen("151044008sizes.txt", "r");
+    	fgets(buff, 10, f);
+    	printf("String read: %s\n", buff);
+    	fclose(f);
+  
+	return 0;
 
+}
+	
