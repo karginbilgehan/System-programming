@@ -30,7 +30,6 @@ int main(int argc, char *argv[])
 			if(total_size!=-1){
 				total_size=total_size/1024;
 				childPid=getpid();		
-				//printf("%d \t \t %d \t \t %s \n",pid,total_size,argv[2]);
 				sprintf(toFile,"%d \t \t %d \t \t %s \n",childPid,total_size,argv[2]);
 				int temp_size=strlen(toFile);
 				fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_WRONLY, S_IRWXU);
@@ -51,7 +50,6 @@ int main(int argc, char *argv[])
 		    	if(total_size!=-1){
 				total_size=total_size/1024;
 				childPid=getpid();
-				//printf("%d \t \t %d \t \t %s \n",pid,total_size,argv[1]);
 				sprintf(toFile,"%d \t \t %d \t \t %s \n",childPid,total_size,argv[1]);
 				int temp_size=strlen(toFile);
 				fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_WRONLY, S_IRWXU);
@@ -78,8 +76,6 @@ int main(int argc, char *argv[])
 			char *buffer;
 			int fileSize=findTotalSize();
 			buffer = (char *)malloc(fileSize*sizeof(char));
-			//int temp_Size=sizeof(toFile);
-			   
 			fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_RDONLY, S_IRWXU);
 			read(fd,buffer,fileSize);
 			close(fd);
@@ -95,8 +91,6 @@ int main(int argc, char *argv[])
 			char *buffer;
 			int fileSize=findTotalSize();
 			buffer = (char *)malloc(fileSize*sizeof(char));
-			//int temp_Size=sizeof(toFile);
-			   
 			fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_RDONLY, S_IRWXU);
 			read(fd,buffer,fileSize);
 			close(fd);
@@ -113,10 +107,7 @@ int main(int argc, char *argv[])
    	
 		
    }
-   
-	return 0;
-    
-  
+   	return 0;
 }
 // This function return the size of a given file or 
 // return -1, if the file is a special like link or pipe or 
@@ -150,7 +141,7 @@ int postOrderApply(char *path,int pathfun (char *path1)){
   
   if (directory == NULL){
 	printf("%s: This directory can not be open.\n",path);       
-	return -1;
+	exit(1);
   }
  
  
@@ -166,7 +157,6 @@ int postOrderApply(char *path,int pathfun (char *path1)){
 	int fd;	
 	char toFile[1024];
 	id=getpid();
-	//printf("%d \t \t \t \t Special file %s \n",id,currentDir->d_name);
 	sprintf(toFile,"%d \t \t \t \t Special file %s \n",id,currentDir->d_name);
 	int temp_size=strlen(toFile);
 		
@@ -183,8 +173,6 @@ int postOrderApply(char *path,int pathfun (char *path1)){
     
     if (DT_DIR==currentDir->d_type && ARG_CONTROL==2) // it is to control using with 3 argument like ./buNeDu -z A.
     {
-	//int fds[2];
-	//pipe (fds);
 	int fd;
 	FILE *fp;
 	char toFile[1024];
@@ -202,23 +190,18 @@ int postOrderApply(char *path,int pathfun (char *path1)){
 			fprintf(fp,"%d",directory_size);
 			
 			fclose(fp);
-			//close (fds[0]); //Okuma kısmı kapatıldı
-			//write(fds[1],&directory_size,sizeof(directory_size));
-			//close(fds[1]);
 			id=getpid();
 			sprintf(toFile,"%d \t \t %d \t \t %s \n",id,directory_size/1024,filePath);
-			//printf("%s",toFile);
 			int size=strlen(toFile);	
 			fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_WRONLY, S_IRWXU);
-			memset (&lock, 0, sizeof(lock));
+			memset (&lock, 0, sizeof(lock));//start file locking 
  			lock.l_type = F_WRLCK;
  			fcntl (fd, F_SETLKW, &lock);
 			write(fd,toFile,size);
 			lock.l_type = F_UNLCK;
- 			fcntl (fd, F_SETLKW, &lock);
+ 			fcntl (fd, F_SETLKW, &lock);//end file locking
 			close(fd);
-			//printf("%d \t \t %d \t \t %s \n",id,directory_size/1024,filePath);
-			//total_size=total_size+directory_size;	
+				
 		}
 		_exit(0);	
 	}
@@ -234,10 +217,6 @@ int postOrderApply(char *path,int pathfun (char *path1)){
 		fscanf(fp,"%d",&dir_size);
 		fclose(fp);
 		remove("directorySize.txt");
-		//int directory_size;	
-		//close(fds[1]);
-		//read(fds[0],&directory_size,sizeof(directory_size));
-		//close(fds[0]);
 		total_size=total_size+dir_size;	
 		
 	}
@@ -254,16 +233,14 @@ int postOrderApply(char *path,int pathfun (char *path1)){
         	if(directory_size!=-1 || directory_size!=-2){
 			id=getpid();
 			sprintf(toFile,"%d \t \t %d \t \t %s \n",id,directory_size/1024,filePath);
-			//printf("%s",toFile);
-			//printf("%d \t \t %d \t \t %s \n",id,directory_size/1024,filePath);
 			int size=strlen(toFile);
 			fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_WRONLY, S_IRWXU);
-			memset (&lock, 0, sizeof(lock));
+			memset (&lock, 0, sizeof(lock));//start file locking
  			lock.l_type = F_WRLCK;
  			fcntl (fd, F_SETLKW, &lock);
 			write(fd,toFile,size);
 			lock.l_type = F_UNLCK;
- 			fcntl (fd, F_SETLKW, &lock);
+ 			fcntl (fd, F_SETLKW, &lock);//end file locking
 			close(fd);	
 		}
 		_exit(0);
@@ -284,6 +261,8 @@ int postOrderApply(char *path,int pathfun (char *path1)){
     return total_size;
 }
 
+//This fuction find the total processes and return this value.
+//parse the file to find total proces number. 
 int totalProcess(char * buff){
 	
 	int i,j;
@@ -294,25 +273,21 @@ int totalProcess(char * buff){
 	while(buff[i]!='\0'){
 		if(i==0){
 			sscanf(&buff[i],"%d",&pid);
-			//printf("id: %d \n",pid);
 			totalP++;		
 		}
 		if(buff[i-1]=='\n'){
 			sscanf(&buff[i],"%d",&pid);
-			//printf("id: %d \n",pid);
 			while(j<i-1){
 				if(j==0){
 					sscanf(&buff[j],"%d",&pid2);
-					if(pid==pid2){
-						//printf("girdim \n");
+					if(pid==pid2){//compare two pid, if two pid are the same that means this process predefined.
 						control=1;					
 					}
 				}
 				if(buff[j-1]=='\n'){
 					sscanf(&buff[j],"%d",&pid2);
-					//printf("id2: %d \n",pid2);
-					if(pid==pid2){
-						//printf("girdim \n");
+					
+					if(pid==pid2){//compare two pid, if two pid are the same that means this process predefined.
 						control=1;					
 					}
 				}
@@ -329,21 +304,22 @@ int totalProcess(char * buff){
 		}
 		++i;	
 	}
-	//printf("total: %d \n",totalP);
+	
 	return totalP;
 
 }
 
+//This fuction find total character in file and return this value.
+//This size is necessary to read file.
 int findTotalSize(){
 
 	int totalChar=0;
 	FILE *file;
 	file = fopen("151044008sizes.txt", "r");
 	while(fgetc(file)!= EOF){
-		
 		totalChar++;		
 	}
-	//printf("total: %d \n",totalChar);
+	
 	fclose(file);
 	return totalChar;
 
