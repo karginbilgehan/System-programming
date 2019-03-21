@@ -41,7 +41,8 @@ int main(int argc, char *argv[])
 				lock.l_type = F_UNLCK;
 		 		fcntl (fd, F_SETLKW, &lock);
 				close(fd);
-			}    	
+			}
+			   	
 		}
     		else if(argc==2) // it is for using without -z argument. Only two parameters
     		{
@@ -63,43 +64,54 @@ int main(int argc, char *argv[])
 				close(fd);
 		
 			} 
+			
     		}	
-   		
+   		_exit(0);
+		
+   }
+   
+   else{//parent process
+		waitpid(childPid,NULL,0);
+		if(argc==3 && (strcmp(argv[1],"-z")==0)){
+			pid=getpid();
+			//This block read the file and print the output on the screen
+			char *buffer;
+			int fileSize=findTotalSize();
+			buffer = (char *)malloc(fileSize*sizeof(char));
+			//int temp_Size=sizeof(toFile);
+			   
+			fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_RDONLY, S_IRWXU);
+			read(fd,buffer,fileSize);
+			close(fd);
+			int tp=totalProcess(buffer);
+			printf("%s",buffer);
+			printf("%d child processes created. Main process is %d. \n",tp,pid);
+			
+			
+		}
+		else if(argc==2){
+			pid=getpid();
+			//This block read the file and print the output on the screen
+			char *buffer;
+			int fileSize=findTotalSize();
+			buffer = (char *)malloc(fileSize*sizeof(char));
+			//int temp_Size=sizeof(toFile);
+			   
+			fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_RDONLY, S_IRWXU);
+			read(fd,buffer,fileSize);
+			close(fd);
+			int tp=totalProcess(buffer);
+			printf("%s",buffer);
+			printf("%d child processes created. Main process is %d. \n",tp,pid);
+			
+			
+		}
 		else{// This block is for error situation.
 	    		printf("This usage is wrong. There must be 2 or 3 argument. \n");
 			printf("Usage: ./buNeDu -z path_name or ./buNeDu path_name \n");
     		}
    	
-   }
-   
-   else{//parent process
-		waitpid(childPid,NULL,0);
-		pid=getpid();
-		sprintf(toFile,"4 child processes created. Main process is %d. \n",pid);
-		int temp_size=strlen(toFile);
-		fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_WRONLY, S_IRWXU);
-		memset (&lock, 0, sizeof(lock));
-		lock.l_type = F_WRLCK;
-		fcntl (fd, F_SETLKW, &lock);
-		write(fd,toFile,temp_size);
-		lock.l_type = F_UNLCK;
-		fcntl (fd, F_SETLKW, &lock);
-		close(fd);	
-		  
-                //This block read the file and print the output on the screen
-		char *buffer;
-		buffer = (char *)malloc(512*sizeof(char));
-		int temp_Size=sizeof(toFile);
-		//char buffer[temp_Size];   
-		fd=open("151044008sizes.txt",O_CREAT | O_APPEND | O_RDONLY, S_IRWXU);
-		read(fd,buffer,temp_Size);
-		close(fd);
 		
-		//printf("------------------------------AFTER READ-------------------------------\n");
-		printf("%s",buffer);
-		printf("-----------------------------TO FIND TOTAL PROCESSES-------------------------------\n");
-		totalProcess(buffer);
-		free(buffer);
    }
    
 	return 0;
@@ -274,30 +286,68 @@ int postOrderApply(char *path,int pathfun (char *path1)){
 
 int totalProcess(char * buff){
 	
-	int i=0;
-	
-	while(i<200){
-		if(buff[i]=='\n'){
-			printf("\n");	
-			++i;		
-		}	
-		while(buff[i]!='\n'){
-			
-			if(buff[i]==' '){
-				i++;
-				break;
-			}
-			printf("%c",buff[i]);
-			i++;
-			//printf("i: %d \n",i);		
+	int i,j;
+	i = j = 0;
+	int pid,pid2;
+	int totalP,control;
+	totalP=control=0;
+	while(buff[i]!='\0'){
+		if(i==0){
+			sscanf(&buff[i],"%d",&pid);
+			//printf("id: %d \n",pid);
+			totalP++;		
 		}
-		
+		if(buff[i-1]=='\n'){
+			sscanf(&buff[i],"%d",&pid);
+			//printf("id: %d \n",pid);
+			while(j<i-1){
+				if(j==0){
+					sscanf(&buff[j],"%d",&pid2);
+					if(pid==pid2){
+						//printf("girdim \n");
+						control=1;					
+					}
+				}
+				if(buff[j-1]=='\n'){
+					sscanf(&buff[j],"%d",&pid2);
+					//printf("id2: %d \n",pid2);
+					if(pid==pid2){
+						//printf("girdim \n");
+						control=1;					
+					}
+				}
+				j++;
+			}
+			j=0;
+			if(control==0){
+				totalP++;
+			}
+			else{
+				control=0;
+			}
+				
+		}
+		++i;	
 	}
-	
-	return i;
+	//printf("total: %d \n",totalP);
+	return totalP;
 
 }
 
+int findTotalSize(){
+
+	int totalChar=0;
+	FILE *file;
+	file = fopen("151044008sizes.txt", "r");
+	while(fgetc(file)!= EOF){
+		
+		totalChar++;		
+	}
+	//printf("total: %d \n",totalChar);
+	fclose(file);
+	return totalChar;
+
+}
 
 
 
