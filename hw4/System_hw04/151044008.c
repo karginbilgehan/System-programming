@@ -146,7 +146,8 @@ int postOrderApply(char *path,int pathfun (char *path1)){
  int total_size=0;
  //FILE *fp;
  pid_t childPid,id;
- int fds[2]; 
+ int fds[2];
+ char toFile[1024]; 
  
  //struct flock lock;
   
@@ -180,7 +181,7 @@ int postOrderApply(char *path,int pathfun (char *path1)){
     {
 	int fd;
 	//FILE *fp;
-	char toFile[1024];
+	
 	pipe (fds);
 	childPid=fork();
 	if(childPid==0){//child
@@ -239,7 +240,7 @@ int postOrderApply(char *path,int pathfun (char *path1)){
     }
     else if(DT_DIR==currentDir->d_type && ARG_CONTROL==1){ // it is to control using with 2 argument like ./buNeDu A.
 	int fd;
-	char toFile[1024];
+	//char toFile[1024];
 	
 	childPid=fork();	  	
 	if(childPid==0){
