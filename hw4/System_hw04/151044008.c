@@ -100,7 +100,8 @@ int main(int argc, char *argv[])
 			pid=getpid();
 			//This block read the file and print the output on the screen
 			char buffer;
-			
+			char buffForTp[1024]={0};
+			int counter=0;
 			//int fileSize=findTotalSize();
 			//buffer = (char *)malloc(512*sizeof(char));
 			fd=open(fifoName, O_RDONLY | O_NONBLOCK);
@@ -110,10 +111,14 @@ int main(int argc, char *argv[])
 			}
 			while(read(fd,&buffer,sizeof(buffer))!=EOF){
 				printf("%c",buffer);
+				append(buffForTp,buffer);
+				counter ++;
 			}
 			close(fd);
-			//int tp=totalProcess(buffer);
-			printf("%d child processes created. Main process is %d. \n",4,pid);
+			int tp=totalProcess(buffForTp);
+			printf("%d child processes created. Main process is %d. \n",tp,pid);
+			
+		
 			
 			
 		}
@@ -121,7 +126,8 @@ int main(int argc, char *argv[])
 			pid=getpid();
 			//This block read the file and print the output on the screen
 			char buffer;
-			
+			char buffForTp[1024]={0};
+			int counter=0;
 			//int fileSize=findTotalSize();
 			//buffer = (char *)malloc(512*sizeof(char));
 			fd=open(fifoName, O_RDONLY | O_NONBLOCK);
@@ -130,10 +136,13 @@ int main(int argc, char *argv[])
 			}
 			while(read(fd,&buffer,sizeof(buffer))!=EOF){
 				printf("%c",buffer);
+				append(buffForTp,buffer);
+				counter ++;
 			}
 			close(fd);
-			//int tp=totalProcess(buffer);
-			printf("%d child processes created. Main process is %d. \n",4,pid);
+			int tp=totalProcess(buffForTp);
+			printf("%d child processes created. Main process is %d. \n",tp,pid);
+			
 			
 			
 		}
@@ -403,4 +412,10 @@ void pathControl(char* pathName){
   	}
 	closedir(directory);
 	
+}
+
+void append(char* dest, char src)
+{
+        dest[strlen(dest)] = src;
+        dest[strlen(dest)+1] = '\0';
 }	
