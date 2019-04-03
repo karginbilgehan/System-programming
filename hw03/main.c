@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <unistd.h>
+#include <unistd.h> 
 #include <string.h>
 #include <fcntl.h>
 #include "lsf.h"
@@ -23,8 +23,8 @@ void selectCommand(char *command[]);
 int main(int argc, char* argv[]){
 	int exitStat=1;
 	char buffer[COMMAND_SIZE];
-	char historyBuff[1024][COMMAND_SIZE];
-	
+	char historyBuff[1024][COMMAND_SIZE];//it is for !n command.
+	int historyIndex=0;
 	while(exitStat){
 		char **split_command = malloc(10 * sizeof(char*));
 		int i = 0;
@@ -34,14 +34,29 @@ int main(int argc, char* argv[]){
 		printf(">$");
 		fgets(buffer,sizeof(buffer),stdin);
 		
-		strcpy(historyBuff[0],buffer);
-		printf("history: %s \n",historyBuff[0]);			
-		findCommand(split_command,buffer);
+		
+		if(buffer[0]=='!'){//it is for !n command.
+			int index=(int)buffer[1]-48;
+			printf("index: %d \n",index);
+			findCommand(split_command,historyBuff[index]);
+			
+		}			
+		
+		else{//all commands except !n.
+			strcpy(historyBuff[historyIndex],buffer);//it is to keep al command in an array.
+			printf("history: %s \n",historyBuff[historyIndex]);
+			historyIndex++;
+			findCommand(split_command,buffer);
+		}
+		
+		for(i=0;i<historyIndex;++i){
+			printf("history[%d]: %s \n",i,historyBuff[i]);
+		}
 		//printf("%s\n",split_command[0]);
 		//printf("whole command %s \n",split_command[0]);
 		selectCommand(split_command);
 		
-
+		
 		for (i = 0; i < 10; i++)
 		{
     			char* currentIntPtr = split_command[i];
@@ -193,6 +208,3 @@ void cd(char *command[]){
     }
    
 }
-
-
-
