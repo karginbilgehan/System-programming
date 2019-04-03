@@ -19,7 +19,7 @@ int exitCall();
 void cd(char *command[]);
 void findCommand(char ** split_command,char *command);
 void selectCommand(char *command[]);
-
+void help();
 int main(int argc, char* argv[]){
 	int exitStat=1;
 	char buffer[COMMAND_SIZE];
@@ -115,7 +115,9 @@ void selectCommand(char *command[]){
        if(strcmp(command[0],"exit")==0){
 		exitCall();
        }
-       
+       else if(strcmp(command[0],"help")==0){
+		help();
+       }
        else if(strcmp(command[0],"cd")==0){
 		cd(command);
        }
@@ -207,4 +209,31 @@ void cd(char *command[]){
         }
     }
    
+}
+
+void help(){
+
+	printf("Supported command are: pwd/ lsf/ cat/ wc/ bunedu/ cd/ exit/ \n");
+	printf("\n");
+	printf("Description of pwd: Print the full name of the current working directory. \n");
+	printf("Usage: >$ pwd\n");
+	printf("\n");
+	printf("Description of lsf: List the information about the files. Like file type, access right, file size and file name. \n");
+	printf("Usage: >$ lsf\n");
+	printf("\n");
+	printf("Description of cat: Concatenate FILE(s), or standart input, to standart output. \n");
+	printf("Usage: >$ cat myfile.txt\n");
+	printf("\n");
+	printf("Description of wc: Print on standard output the number of lines in the file provided to it as argument or the string coming from standard input until EOF character. \n");
+	printf("Usage: >$ wc example.c\n");
+	printf("\n");
+	printf("Description of bunedu: Summmarize disk of usage each file, recursively for directories. \n");
+	printf("Usage: >$ bunedu -z A or >$ bunedu A\n");
+	printf("\n");
+	printf("Description of cd: Change the present working directory to the location provided as argument. \n");
+	printf("Usage: >$ cd example or >$ cd .. \n");
+	printf("\n");
+	printf("Description of exit: Causes normal process termination. \n");
+	printf("Usage: >$ exit\n");
+	printf("\n");
 }
