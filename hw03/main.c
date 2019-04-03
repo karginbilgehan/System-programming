@@ -12,30 +12,120 @@
 #include "pwd.h"
 #include "lsf.h"
 
+#define COMMAND_SIZE 256
+#define DELIM " \t\r\n\a"
+
 int exitCall();
-void findCommand(char* command);
+void cd(char* commands[], char* sizeArr);
+void findCommand(char ** split_command,char *command);
+void selectCommand(char *command[]);
 
 int main(int argc, char* argv[]){
 	int exitStat=1;
-	char buffer[1024];
+	char buffer[COMMAND_SIZE];
 	while(exitStat){
+		char **split_command = malloc(10 * sizeof(char*));
+		int i = 0;
+		for(i = 0; i<10; ++i){
+			split_command[i] = malloc(sizeof(char) * COMMAND_SIZE);	
+		}
 		printf(">$");
-		fgets(buffer,sizeof(buffer),stdin);	
-		findCommand(buffer);
+		fgets(buffer,sizeof(buffer),stdin);
+			
+		findCommand(split_command,buffer);
+		//printf("%s\n",split_command[0]);
+		selectCommand(split_command);
+		
+
+		for (i = 0; i < 10; i++)
+		{
+    			char* currentIntPtr = split_command[i];
+   			free(currentIntPtr);
+		}
+		free(split_command);
+	
 	}
 }
 
-int exitCall(){
-    exit(1);		  
-}
+void findCommand(char ** split_command,char *command){
+	int index=0;
+	int tempIndex=0;
+	int splitIndex=0;
+	int i;
+	char aCommand[COMMAND_SIZE];
+	char tempCommand[COMMAND_SIZE]={0};
+	while(command[index]!='\n'){
+		if(command[index]!=' '){
+			
+			tempCommand[tempIndex]=command[index];
+			tempIndex++;
+			//printf("temp command: %s \n",tempCommand);
+		}
+		
+		else{
+			strcpy(split_command[splitIndex],tempCommand);
+			printf("command %d : %s \n",splitIndex,split_command[splitIndex]);
+			splitIndex++;
+			for(i=0;i<tempIndex;++i){
+				tempCommand[i]='\0';
+			}
+			tempIndex=0;
+		}
+		
+		if(command[index+1] == '\n'){
 
-void findCommand(char *command){
+			
+			strcpy(split_command[splitIndex],tempCommand);
+			printf("command %d : %s \n",splitIndex,split_command[splitIndex]);
+			splitIndex++;
+			for(i=0;i<tempIndex;++i){
+				tempCommand[i]='\0';
+			}
+			tempIndex=0;
+
+		}					
+		index++;						
+			
+	}
+
+}
+void selectCommand(char *command[]){
        pid_t childPid;
        //printf("value %d \n",strcmp(command,"exit\n"));
-       if(strcmp(command,"exit\n")==0){
+       if(strcmp(command[0],"exit")==0){
 		exitCall();
        }
-       else if(strcmp(command,"pwd\n")==0){
+       else if(strcmp(command[0],"bunedu")==0){
+		if(strcmp(command[1],"-z")!=0){
+			childPid=fork();
+			if(childPid==0){
+				char *args[]={"./buNeDu",command[1]};
+				args[2]=NULL;
+				//printf("args: %s \n",args[2]); 
+				execv(args[0],args);
+			}
+			else{
+				wait(NULL);
+			}
+		}
+		else if(strcmp(command[1],"-z")==0){
+			childPid=fork();
+			if(childPid==0){
+				char *args[]={"./buNeDu",command[1]};
+				strcpy(args[2],command[2]);
+		
+				//printf("args: %s \n",args[2]); 
+				execv(args[0],args);
+			}
+			else{
+				wait(NULL);
+			}
+
+		}
+		
+       }
+       
+       else if(strcmp(command[0],"pwd")==0){
 		childPid=fork();
 		if(childPid==0){
 			char *args[]={"./pwd",NULL}; 
@@ -46,7 +136,7 @@ void findCommand(char *command){
 		}
        }
 
-       else if(strcmp(command,"lsf\n")==0){
+       else if(strcmp(command[0],"lsf")==0){
 		childPid=fork();
 		if(childPid==0){
 			char *args[]={"./lsf",NULL}; 
@@ -56,6 +146,44 @@ void findCommand(char *command){
 			wait(NULL);
 		}
        }
+       else if(strcmp(command[0],"cat")==0){
+		childPid=fork();
+		if(childPid==0){
+			char *args[]={"./cat",command[1]}; 
+			execv(args[0],args);
+		}
+		else{
+			wait(NULL);
+		}
+       } 
+       else if(strcmp(command[0],"wc")==0){
+		childPid=fork();
+		if(childPid==0){
+			char *args[]={"./wc",command[1]}; 
+			execv(args[0],args);
+		}
+		else{
+			wait(NULL);
+		}
+       }
 }
+
+int exitCall(){
+    exit(1);		  
+}
+
+void cd(char* commands[], char* sizeArr){
+    
+    if(atoi(sizeArr) == 2){
+        char totalPath[1024] = "./";
+        strcat(totalPath, commands[1]);
+        if(chdir(totalPath) == -1){
+            perror("No such file or directory.\n");
+        }
+    }
+    
+}
+
+
 
 
