@@ -13,16 +13,18 @@
 #include "lsf.h"
 
 #define COMMAND_SIZE 256
-#define DELIM " \t\r\n\a"
+
 
 int exitCall();
-void cd(char* commands[], char* sizeArr);
+void cd(char *command[]);
 void findCommand(char ** split_command,char *command);
 void selectCommand(char *command[]);
 
 int main(int argc, char* argv[]){
 	int exitStat=1;
 	char buffer[COMMAND_SIZE];
+	char historyBuff[1024][COMMAND_SIZE];
+	
 	while(exitStat){
 		char **split_command = malloc(10 * sizeof(char*));
 		int i = 0;
@@ -31,9 +33,12 @@ int main(int argc, char* argv[]){
 		}
 		printf(">$");
 		fgets(buffer,sizeof(buffer),stdin);
-			
+		
+		strcpy(historyBuff[0],buffer);
+		printf("history: %s \n",historyBuff[0]);			
 		findCommand(split_command,buffer);
 		//printf("%s\n",split_command[0]);
+		//printf("whole command %s \n",split_command[0]);
 		selectCommand(split_command);
 		
 
@@ -64,7 +69,7 @@ void findCommand(char ** split_command,char *command){
 		
 		else{
 			strcpy(split_command[splitIndex],tempCommand);
-			printf("command %d : %s \n",splitIndex,split_command[splitIndex]);
+			//printf("command %d : %s \n",splitIndex,split_command[splitIndex]);
 			splitIndex++;
 			for(i=0;i<tempIndex;++i){
 				tempCommand[i]='\0';
@@ -76,7 +81,7 @@ void findCommand(char ** split_command,char *command){
 
 			
 			strcpy(split_command[splitIndex],tempCommand);
-			printf("command %d : %s \n",splitIndex,split_command[splitIndex]);
+			//printf("command %d : %s \n",splitIndex,split_command[splitIndex]);
 			splitIndex++;
 			for(i=0;i<tempIndex;++i){
 				tempCommand[i]='\0';
@@ -95,6 +100,11 @@ void selectCommand(char *command[]){
        if(strcmp(command[0],"exit")==0){
 		exitCall();
        }
+       
+       else if(strcmp(command[0],"cd")==0){
+		cd(command);
+       }
+
        else if(strcmp(command[0],"bunedu")==0){
 		if(strcmp(command[1],"-z")!=0){
 			childPid=fork();
@@ -171,19 +181,18 @@ void selectCommand(char *command[]){
 int exitCall(){
     exit(1);		  
 }
-
-void cd(char* commands[], char* sizeArr){
+//cd ile istenilen yere gidiyor ancak gidilen dosya icinde pwd lsf gibi komutları görmüyor çünkü o komutların executableları o dosyanın içinde yoookk
+void cd(char *command[]){
     
-    if(atoi(sizeArr) == 2){
-        char totalPath[1024] = "./";
-        strcat(totalPath, commands[1]);
-        if(chdir(totalPath) == -1){
-            perror("No such file or directory.\n");
+    if (command[1] == NULL) {
+        fprintf(stderr, "CD:Wrong Argument ->\n");
+    } else {
+        if (chdir(command[1]) != 0) {
+            perror("ERROR !!!");
         }
     }
-    
+   
 }
-
 
 
 
