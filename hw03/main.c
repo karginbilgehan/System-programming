@@ -18,6 +18,7 @@ void findCommand(char ** split_command,char *command,int* pipe);
 void selectCommand(char *command[],int* pipe);
 void selectCommandForPipe(char* parseCommand[]);
 void help();
+void signal_handler(int signal);
 
 int beforePipeCounter=0;
 int afterPipeCounter=0;
@@ -30,6 +31,10 @@ int main(int argc, char* argv[]){
 	int historyIndex=0;
 	int forPipe=0;
 	getcwd(currentDir,sizeof(currentDir));
+
+	
+    	signal(SIGINT,&signal_handler);
+    	signal(SIGTERM,&signal_handler);
 	while(exitStat){
 		char **split_command = malloc(10 * sizeof(char*));
 		int i = 0;
@@ -39,6 +44,9 @@ int main(int argc, char* argv[]){
 		printf(">$");
 		fgets(buffer,sizeof(buffer),stdin);
 		
+		if(strcmp(buffer,"exit\n")==0){
+			exitStat=exitCall();
+		}
 		
 		if(buffer[0]=='!'){//it is for !n command.
 			int index=(int)buffer[1]-48;
@@ -135,10 +143,8 @@ void selectCommand(char *command[],int* pipe){
        //printf("value %d \n",strcmp(command,"exit\n"));
        char curDir[COMMAND_SIZE];
 
-       if(strcmp(command[0],"exit")==0){
-		exitCall();
-       }
-       else if(strcmp(command[0],"help")==0){
+       
+       if(strcmp(command[0],"help")==0){
 		help();
        }
        else if(strcmp(command[0],"cd")==0){
@@ -380,20 +386,21 @@ void selectCommandForPipe(char* parseCommand[]){
 }
 
 int exitCall(){
-    exit(1);		  
+    return 0;		  
 }
 //cd ile istenilen yere gidiyor ancak gidilen dosya icinde pwd lsf gibi komutları görmüyor çünkü o komutların executableları o dosyanın içinde yoookk
 void cd(char *command[]){
-    
+    int success;
     if (command[1] == NULL) {
-        fprintf(stderr, "CD:Wrong Argument ->\n");
+        fprintf(stderr, "Wrong usage. There must be: cd [pathname]\n");
     } 
-    else {
-        if (chdir(command[1]) != 0) {
-            perror("ERROR !!!");
-        }
-    }
-   
+    else{
+	success=chdir(command[1]);
+	if(success==-1){
+		fprintf(stderr, "There is no such path.\n");
+	}
+    } 
+        
 }
 
 void help(){
@@ -421,4 +428,18 @@ void help(){
 	printf("Description of exit: Causes normal process termination. \n");
 	printf("Usage: >$ exit\n");
 	printf("\n");
+}
+
+void signal_handler(int signal){
+   if (signal == SIGINT) {
+        printf("There is a signal: Ctrl+C\n");
+        exit(0);
+
+    }
+    if (signal == SIGTERM) {
+        printf("There is a signal: Ctrl+C\n");
+        exit(0);
+
+    }
+
 }
