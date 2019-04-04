@@ -22,6 +22,7 @@ void help();
 int beforePipeCounter=0;
 int afterPipeCounter=0;
 char currentDir[1024];
+
 int main(int argc, char* argv[]){
 	int exitStat=1;
 	char buffer[COMMAND_SIZE];
@@ -41,14 +42,14 @@ int main(int argc, char* argv[]){
 		
 		if(buffer[0]=='!'){//it is for !n command.
 			int index=(int)buffer[1]-48;
-			printf("index: %d \n",index);
+			//printf("index: %d \n",index);
 			findCommand(split_command,historyBuff[index],&forPipe);
 			
 		}			
 		
 		else{//all commands except !n.
 			strcpy(historyBuff[historyIndex],buffer);//it is to keep al command in an array.
-			printf("history: %s \n",historyBuff[historyIndex]);
+			//printf("history: %s \n",historyBuff[historyIndex]);
 			historyIndex++;
 			findCommand(split_command,buffer,&forPipe);
 		}
@@ -132,7 +133,7 @@ void findCommand(char ** split_command,char *command,int* pipe){
 void selectCommand(char *command[],int* pipe){
        pid_t childPid;
        //printf("value %d \n",strcmp(command,"exit\n"));
-
+       char curDir[COMMAND_SIZE];
 
        if(strcmp(command[0],"exit")==0){
 		exitCall();
@@ -226,11 +227,15 @@ void selectCommand(char *command[],int* pipe){
        } 
        else if(strcmp(command[0],"wc")==0){
 		if(*pipe==0){
+			//sprintf(curDir,"%s%s",currentDir,"/wc");
+			//printf("current: %s \n",currentDir);
+			//printf("current dir: %s \n",curDir);
 			childPid=fork();
 			if(childPid==0){
 				
-					char *args[]={"./wc",command[1]}; 
-					execv(args[0],args);
+				//printf("cuurent:%s \n",curDir);
+				char *args[]={"./wc",command[1]}; 
+				execv(args[0],args);
 			}
 			
 			
@@ -244,8 +249,9 @@ void selectCommand(char *command[],int* pipe){
        }
 }
 void selectCommandForPipe(char* parseCommand[]){
-	printf("afterPipeCounter %d \n",afterPipeCounter);
-	printf("beforePipeCounter %d \n",beforePipeCounter);
+	//printf("afterPipeCounter %d \n",afterPipeCounter);
+	//printf("beforePipeCounter %d \n",beforePipeCounter);
+	char command[COMMAND_SIZE][COMMAND_SIZE];	
 	int pfd[2];
 	if(pipe(pfd)==-1)
 		printf("pipe");
@@ -262,9 +268,27 @@ void selectCommandForPipe(char* parseCommand[]){
 				if(close(pfd[1]) == -1)	
 					printf("close 2");		
 			}
+			if (beforePipeCounter==1){
+				sprintf(command[0],"%s%s","./",parseCommand[0]);
+				//printf("command: %s \n",command[0]);
+				execlp(command[0],parseCommand[0],(char*) NULL);
+				//printf("execlp ls");
+			}
+			else if (beforePipeCounter==2){
+				//printf("girdim \n");
+				sprintf(command[0],"%s%s","./",parseCommand[0]);
+				//printf("command: %s \n",command[0]);
+				execlp(command[0],parseCommand[0],parseCommand[1],(char*) NULL);
+				printf("execlp ls");
+			}
+			else if (beforePipeCounter==3){
+				sprintf(command[0],"%s%s","./",parseCommand[0]);
+				//printf("command: %s \n",command[0]);
+				execlp(command[0],parseCommand[0],parseCommand[1],parseCommand[2],(char*) NULL);
+				//printf("execlp ls");
 			
-			execlp("./pwd",parseCommand[0],(char*) NULL);
-			printf("execlp ls");
+			}
+			
 		default:
 			break;
 	}
@@ -281,9 +305,63 @@ void selectCommandForPipe(char* parseCommand[]){
 				if(close(pfd[0]) == -1)	
 					printf("close 4");		
 			}
-			printf("parse Command: %s \n",parseCommand[2]);
-			execlp("./cat",parseCommand[3],(char*) NULL);
-			printf("execlp wc");
+			//printf("parse Command: %s \n",parseCommand[2]);
+			if(beforePipeCounter==1 && afterPipeCounter==1){
+				sprintf(command[0],"%s%s","./",parseCommand[2]);
+				//printf("command: %s \n",command[0]);
+				execlp(command[0],parseCommand[2],(char*) NULL);
+
+			}
+			else if(beforePipeCounter==1 && afterPipeCounter==2){
+				sprintf(command[0],"%s%s","./",parseCommand[2]);
+				//printf("command: %s \n",command[0]);
+				execlp(command[0],parseCommand[2],parseCommand[3],(char*) NULL);
+
+			}
+			else if(beforePipeCounter==1 && afterPipeCounter==3){
+				sprintf(command[0],"%s%s","./",parseCommand[2]);
+				//printf("command: %s \n",command[0]);
+				execlp(command[0],parseCommand[2],parseCommand[3],parseCommand[3],(char*) NULL);
+
+			}
+			else if(beforePipeCounter==2 && afterPipeCounter==1){
+				sprintf(command[0],"%s%s","./",parseCommand[3]);
+				//printf("command: %s \n",command[0]);
+				execlp(command[0],parseCommand[3],(char*) NULL);
+	
+			}
+			else if(beforePipeCounter==2 && afterPipeCounter==2){
+				sprintf(command[0],"%s%s","./",parseCommand[3]);
+				//printf("command: %s \n",command[0]);
+				execlp(command[0],parseCommand[3],parseCommand[4],(char*) NULL);
+	
+			}
+
+			else if(beforePipeCounter==2 && afterPipeCounter==3){
+				sprintf(command[0],"%s%s","./",parseCommand[3]);
+				//printf("command: %s \n",command[0]);
+				execlp(command[0],parseCommand[3],parseCommand[4],parseCommand[5],(char*) NULL);
+	
+			}
+			else if(beforePipeCounter==3 && afterPipeCounter==1){
+				sprintf(command[0],"%s%s","./",parseCommand[4]);
+				//printf("command: %s \n",command[0]);
+				execlp(command[0],parseCommand[4],(char*) NULL);
+	
+			}
+			else if(beforePipeCounter==3 && afterPipeCounter==2){
+				sprintf(command[0],"%s%s","./",parseCommand[4]);
+				//printf("command: %s \n",command[0]);
+				execlp(command[0],parseCommand[4],parseCommand[5],(char*) NULL);
+	
+			}
+			else if(beforePipeCounter==3 && afterPipeCounter==3){
+				sprintf(command[0],"%s%s","./",parseCommand[4]);
+				//printf("command: %s \n",command[0]);
+				execlp(command[0],parseCommand[4],parseCommand[5],parseCommand[6],(char*) NULL);
+	
+			}			
+		
 		default:
 			break;
 	}
