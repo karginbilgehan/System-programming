@@ -7,10 +7,7 @@
 #include <unistd.h> 
 #include <string.h>
 #include <fcntl.h>
-#include "lsf.h"
-#include "cat.h"
-#include "pwd.h"
-#include "lsf.h"
+
 
 #define COMMAND_SIZE 256
 
@@ -24,14 +21,14 @@ void help();
 
 int beforePipeCounter=0;
 int afterPipeCounter=0;
-
+char currentDir[1024];
 int main(int argc, char* argv[]){
 	int exitStat=1;
 	char buffer[COMMAND_SIZE];
 	char historyBuff[1024][COMMAND_SIZE];//it is for !n command.
 	int historyIndex=0;
 	int forPipe=0;
-	
+	getcwd(currentDir,sizeof(currentDir));
 	while(exitStat){
 		char **split_command = malloc(10 * sizeof(char*));
 		int i = 0;
@@ -231,9 +228,12 @@ void selectCommand(char *command[],int* pipe){
 		if(*pipe==0){
 			childPid=fork();
 			if(childPid==0){
-				char *args[]={"./wc",command[1]}; 
-				execv(args[0],args);
+				
+					char *args[]={"./wc",command[1]}; 
+					execv(args[0],args);
 			}
+			
+			
 			else{
 				wait(NULL);
 			}	
@@ -263,7 +263,7 @@ void selectCommandForPipe(char* parseCommand[]){
 					printf("close 2");		
 			}
 			
-			execlp("ls","ls",(char*) NULL);
+			execlp("./pwd",parseCommand[0],(char*) NULL);
 			printf("execlp ls");
 		default:
 			break;
@@ -281,8 +281,8 @@ void selectCommandForPipe(char* parseCommand[]){
 				if(close(pfd[0]) == -1)	
 					printf("close 4");		
 			}
-			
-			execlp("wc","wc","-l",(char*) NULL);
+			printf("parse Command: %s \n",parseCommand[2]);
+			execlp("./cat",parseCommand[3],(char*) NULL);
 			printf("execlp wc");
 		default:
 			break;
@@ -297,7 +297,7 @@ void selectCommandForPipe(char* parseCommand[]){
 	if(wait(NULL)==-1)
 		printf("wait 2");
 
-	//exit(EXIT_SUCCESS);
+	
 
 }
 
@@ -309,7 +309,8 @@ void cd(char *command[]){
     
     if (command[1] == NULL) {
         fprintf(stderr, "CD:Wrong Argument ->\n");
-    } else {
+    } 
+    else {
         if (chdir(command[1]) != 0) {
             perror("ERROR !!!");
         }

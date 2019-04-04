@@ -7,31 +7,38 @@
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
-#include "cat.h"
+//#include "wc.h"
 
 
 int main (int argc, char*argv[]){
-	int fd,size;
-	fd=open(argv[1],O_RDONLY);
-	size=lseek(fd,(off_t) 0, SEEK_END);
-	close(fd);
-	int NOL=wc(argv[1],size);
-	fprintf(stdout,"%d %s\n",NOL,argv[1]);
+	int counter=0;
+	char letter;
+		printf("argc: %d \n",argc);	
+		if(argc==1){
+			printf("argc %d \n",argc);	
+			while(scanf("%c",&letter)!=EOF){
+				if(letter == '\n'){
+					counter++;
+				}
+			}
+			printf("%d \n",counter);
+		}
+		else{
+			FILE *fp;
+			char text[1024];
+			fp = fopen(argv[1],"r");
+			while(fgets(text,1024,fp)!='\0')
+			{
+				counter++;
+			}
+					     
+			fclose(fp);
+			printf("%d \n",counter);	
+	
+		}
+		
 	return 0;
 }	
 
 
-int wc(char* fileName,int fileSize){
-       FILE *fp;
-       char text[fileSize];
-       int counter=0;
-       fp = fopen(fileName,"r");
-       while(fgets(text,fileSize,fp)!='\0')
-       {
-	     counter ++;
-       }
-             
-       fclose(fp);
-       return counter;
-}
 

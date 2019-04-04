@@ -8,7 +8,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include "pwd.h"
-
+int pwd();
 
 int main (int argc, char*argv[]){
 
