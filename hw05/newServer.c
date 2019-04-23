@@ -101,10 +101,12 @@ int main(int argc, char *argv[]) {
 			int pid=req.pid%4;
 			
 			
-			close(fd[pid][0]);  
-			write(fd[pid][1], &req.pid, sizeof(req)); 
-			close(fd[pid][1]);
-			
+			if(close(fd[pid][0])==-1)
+				perror("close read side");  
+			if(write(fd[pid][1], &req.pid, sizeof(req))==-1)
+				perror("write"); 
+			if(close(fd[pid][1])==-1)
+				perror("close write side");
 			
 			//seqNum += req.seqLen; /* Update our sequence number */
 		}
@@ -164,5 +166,6 @@ void timer_handler(union sigval sv) {
 	if(timer_delete(timerid)!=0){
 		perror("Timer can not destroy successfully");
 	}
+	kill(0,SIGKILL);
 	exit(EXIT_SUCCESS);
 }
