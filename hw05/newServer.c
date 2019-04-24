@@ -11,9 +11,10 @@ void timer_handler(union sigval sv);
 void start_timer(int bankTime);
 void process_timer_handler(union sigval sv);
 void timer_for_Process();
+int money_creator(pid_t pid);
 
-timer_t timerid;
-int process_timer=0;
+timer_t timerid; // it is for server time 
+int process_timer=0; // it is for 1.5 second 
 int main(int argc, char *argv[]) {
 	int serverFd, dummyFd, clientFd,i,totalChild;
 	char clientFifo[CLIENT_FIFO_NAME_LEN];
@@ -73,18 +74,16 @@ int main(int argc, char *argv[]) {
 			/* Open client FIFO (previously created by client) */
 			//close(fd[totalChild][0]);
 			snprintf(clientFifo, CLIENT_FIFO_NAME_LEN, CLIENT_FIFO_TEMPLATE, (long)tempPid);
-			printf("clientFifo: %s \n",clientFifo);
+			//printf("clientFifo: %s \n",clientFifo);
 			clientFd = open(clientFifo, O_WRONLY);
 			if (clientFd == -1) { /* Open failed, give up on client */
 				perror("open3");
 				continue;
 			}
 			/* Send response and close FIFO */
-			randMoney=rand();
-			randMoney=randMoney * 55251;
-			randMoney=randMoney % tempPid;
-			randMoney=randMoney % 100;
+			randMoney=money_creator(tempPid);
 			
+			//printf("rand Money: %d \n",ranMoney);
 			resp.money = randMoney;
 			if (write(clientFd, &resp, sizeof(struct response)) != sizeof(struct response))
 				fprintf(stderr, "Error writing to FIFO %s\n", clientFifo);
@@ -230,4 +229,13 @@ void timer_handler(union sigval sv) {
 //child oldugunda direk exit yaparsan childlar orphan durumuna duser. Bunu kontrol et.
 void process_timer_handler(union sigval sv) {
 	process_timer=1;
+}
+int money_creator(pid_t pid){
+	int money=rand();
+	money*=54464;
+	money%=pid;
+	money%=100;	
+	money+=100;
+	money%=100;
+	return money;
 }
