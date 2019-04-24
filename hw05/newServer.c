@@ -9,8 +9,11 @@
 
 void timer_handler(union sigval sv);
 void start_timer(int bankTime);
+void process_timer_handler(union sigval sv);
+void timer_for_Process();
 
 timer_t timerid;
+int process_timer=0;
 int main(int argc, char *argv[]) {
 	int serverFd, dummyFd, clientFd,i,totalChild;
 	char clientFifo[CLIENT_FIFO_NAME_LEN];
@@ -52,18 +55,23 @@ int main(int argc, char *argv[]) {
 	
 	if(p==0)
 	{
+	
 		for(;;){
+			
 			pid_t tempPid;
-			close(fd[totalChild][1]); // Close writing end of second pipe 
+			timer_for_Process();
+			//printf("cpu time used %lf \n",cpu_time_used);
+			//close(fd[totalChild][1]); // Close writing end of second pipe 
 		  
 			// Read string from child, print it and close 
 			// reading end. 
-			
+			//printf("process timer %d \n",process_timer);
+			while(process_timer==0);
 			while(read(fd[totalChild][0], &tempPid, sizeof(req))<=0);
 			printf("temp pid : %d \n",tempPid);
 			//!!! bu kısımdan altı child process içinde olacak.
 			/* Open client FIFO (previously created by client) */
-			close(fd[totalChild][0]);
+			//close(fd[totalChild][0]);
 			snprintf(clientFifo, CLIENT_FIFO_NAME_LEN, CLIENT_FIFO_TEMPLATE, (long)tempPid);
 			printf("clientFifo: %s \n",clientFifo);
 			clientFd = open(clientFifo, O_WRONLY);
@@ -76,12 +84,15 @@ int main(int argc, char *argv[]) {
 			randMoney=randMoney * 55251;
 			randMoney=randMoney % tempPid;
 			randMoney=randMoney % 100;
-			randMoney+=100;
+			
 			resp.money = randMoney;
 			if (write(clientFd, &resp, sizeof(struct response)) != sizeof(struct response))
 				fprintf(stderr, "Error writing to FIFO %s\n", clientFifo);
 			if (close(clientFd) == -1)
 				perror("close");
+			
+			
+			process_timer=0;
 		}	
 		
 
@@ -101,12 +112,12 @@ int main(int argc, char *argv[]) {
 			int pid=req.pid%4;
 			
 			
-			if(close(fd[pid][0])==-1)
-				perror("close read side");  
+			/*if(close(fd[pid][0])==-1)
+				perror("close read side in parent process");*/  
 			if(write(fd[pid][1], &req.pid, sizeof(req))==-1)
-				perror("write"); 
-			if(close(fd[pid][1])==-1)
-				perror("close write side");
+				perror("write parent process"); 
+			/*if(close(fd[pid][1])==-1)
+				perror("close write side in parent process");*/
 			
 			//seqNum += req.seqLen; /* Update our sequence number */
 		}
@@ -159,13 +170,64 @@ void start_timer(int bankTime){
 	//timer_delete(timerid);
 }
 
+void timer_for_Process(){
+
+	struct sigevent sev;
+	struct itimerspec trigger;
+
+	/* Set all `sev` and `trigger` memory to 0 */
+	memset(&sev, 0, sizeof(struct sigevent));
+	memset(&trigger, 0, sizeof(struct itimerspec));
+
+	/* 
+	 * Set the notification method as SIGEV_THREAD:
+	 *
+	 * Upon timer expiration, `sigev_notify_function` (thread_handler()),
+	 * will be invoked as if it were the start function of a new thread.
+	 *
+	 */
+	sev.sigev_notify = SIGEV_THREAD;
+	sev.sigev_notify_function = &process_timer_handler;
+	
+	/* Create the timer. In this example, CLOCK_REALTIME is used as the
+	 * clock, meaning that we're using a system-wide real-time clock for
+	 * this timer.
+	 */
+	timer_create(CLOCK_REALTIME, &sev, &timerid);
+
+	/* Timer expiration will occur withing 5 seconds after being armed
+	 * by timer_settime().
+	 */
+	trigger.it_value.tv_sec = 1.5;
+
+	/* Arm the timer. No flags are set and no old_value will be retrieved.
+	 */
+	timer_settime(timerid, 0, &trigger, NULL);
+	
+	/* Wait 10 seconds under the main thread. In 5 seconds (when the
+	 * timer expires), a message will be printed to the standard output
+	 * by the newly created notification thread.
+	 */
+	
+	/* Delete (destroy) the timer */
+	//timer_delete(timerid);
+
+
+
+}
 //child oldugunda direk exit yaparsan childlar orphan durumuna duser. Bunu kontrol et.
 void timer_handler(union sigval sv) {
-	printf("Bank has been closed. \n");
+	//printf("Bank has been ");
         /* Will print "5 seconds elapsed." */
 	if(timer_delete(timerid)!=0){
 		perror("Timer can not destroy successfully");
 	}
-	kill(0,SIGKILL);
+	kill(0,SIGTERM);
 	exit(EXIT_SUCCESS);
+}
+
+
+//child oldugunda direk exit yaparsan childlar orphan durumuna duser. Bunu kontrol et.
+void process_timer_handler(union sigval sv) {
+	process_timer=1;
 }
