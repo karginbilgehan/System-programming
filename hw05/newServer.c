@@ -18,6 +18,7 @@ timer_t timerid; // it is for server time
 int process_timer=0; // it is for 1.5 second 
 int fileDesc;
 int totalTime;
+int totalProcess=0;
 int main(int argc, char *argv[]) {
 	int serverFd, dummyFd, clientFd,i,totalChild;
 	char clientFifo[CLIENT_FIFO_NAME_LEN];
@@ -32,6 +33,7 @@ int main(int argc, char *argv[]) {
 	char forHeader[]="clientPid         process No           para           İslemin Bitis Zamani";
 	char forHeader2[]="---------         ----------           ----           --------------------";
  	umask(0); /* So we get the permissions we want */
+	remove(FILE_NAME);
 	totalTime=atoi(argv[1]);
 	fileDesc=open(FILE_NAME, O_RDWR | O_CREAT, 0666);
 	
@@ -136,7 +138,7 @@ int main(int argc, char *argv[]) {
 			}
 			printf("req.pid : %d\n", req.pid);
 			int pid=req.pid%4;
-			
+			totalProcess++;
 			
 			/*if(close(fd[pid][0])==-1)
 				perror("close read side in parent process");*/  
@@ -252,13 +254,14 @@ void timer_handler(union sigval sv) {
 		perror("Timer can not destroy successfully");
 	}
 	
-	sprintf(endPoint,"%d saniye dolmustur. X musteriye hizmet verdik.%c%c",totalTime,'\n','\0');
+	sprintf(endPoint,"%d saniye dolmustur. %d musteriye hizmet verdik.%c%c",totalTime,totalProcess,'\n','\0');
 	while(endPoint[counter]!='\0'){
 		counter ++;
 	}
 	if(write(fileDesc,endPoint,counter) < 0)
 		perror("write log 6");
 	close(fileDesc);
+	
 	kill(0,SIGTERM);
 	exit(EXIT_SUCCESS);
 }
