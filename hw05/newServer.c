@@ -6,6 +6,7 @@
 #include    <time.h>
 #include    "bank_client.h"
 
+#define FILE_NAME "log.txt"
 
 void timer_handler(union sigval sv);
 void start_timer(int bankTime);
@@ -15,6 +16,8 @@ int money_creator(pid_t pid);
 
 timer_t timerid; // it is for server time 
 int process_timer=0; // it is for 1.5 second 
+int fileDesc;
+int totalTime;
 int main(int argc, char *argv[]) {
 	int serverFd, dummyFd, clientFd,i,totalChild;
 	char clientFifo[CLIENT_FIFO_NAME_LEN];
@@ -26,7 +29,12 @@ int main(int argc, char *argv[]) {
 	pid_t p;
 	int fd[4][2];
 	start_timer(bankTime);
-	umask(0); /* So we get the permissions we want */
+	char forHeader[]="clientPid         process No           para           İslemin Bitis Zamani";
+	char forHeader2[]="---------         ----------           ----           --------------------";
+ 	umask(0); /* So we get the permissions we want */
+	totalTime=atoi(argv[1]);
+	fileDesc=open(FILE_NAME, O_RDWR | O_CREAT, 0666);
+	
 	if (mkfifo(SERVER_FIFO, S_IRUSR | S_IWUSR | S_IWGRP) == -1 && errno != EEXIST)
 		perror("mkfifo");
 	serverFd = open(SERVER_FIFO, O_RDONLY);
@@ -39,7 +47,14 @@ int main(int argc, char *argv[]) {
 	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
 		perror("signal");
 	
-	
+	if(write(fileDesc,forHeader,sizeof(forHeader)-1) < 0)
+		perror("write log 1");
+	if(write(fileDesc,"\n",1) < 0)
+		perror("write log 2");
+	if(write(fileDesc,forHeader2,sizeof(forHeader2)-1) < 0)
+		perror("write log 3");
+	if(write(fileDesc,"\n",1) < 0)
+		perror("write log 4");
 	for(i=0;i<4;++i)
 	{
 		if (pipe(fd[i])==-1) 
@@ -61,15 +76,20 @@ int main(int argc, char *argv[]) {
 			
 			pid_t tempPid;
 			timer_for_Process();
+			char logData[10]={0};
+			int counter=0;
+			
 			//printf("cpu time used %lf \n",cpu_time_used);
 			//close(fd[totalChild][1]); // Close writing end of second pipe 
 		  
 			// Read string from child, print it and close 
 			// reading end. 
 			//printf("process timer %d \n",process_timer);
+			process_timer=0;
 			while(process_timer==0);
+			
 			while(read(fd[totalChild][0], &tempPid, sizeof(req))<=0);
-			printf("temp pid : %d \n",tempPid);
+			//printf("temp pid : %d \n",tempPid);
 			//!!! bu kısımdan altı child process içinde olacak.
 			/* Open client FIFO (previously created by client) */
 			//close(fd[totalChild][0]);
@@ -82,7 +102,6 @@ int main(int argc, char *argv[]) {
 			}
 			/* Send response and close FIFO */
 			randMoney=money_creator(tempPid);
-			
 			//printf("rand Money: %d \n",ranMoney);
 			resp.money = randMoney;
 			if (write(clientFd, &resp, sizeof(struct response)) != sizeof(struct response))
@@ -90,8 +109,14 @@ int main(int argc, char *argv[]) {
 			if (close(clientFd) == -1)
 				perror("close");
 			
+			int processNo=getpid();
+			sprintf(logData, "%d              %d                 %d%c%c", tempPid,processNo,randMoney,'\n','\0');
+			while(logData[counter]!='\0'){
+				counter ++;
+			}
+			if(write(fileDesc,logData,counter) < 0)
+				perror("write log 5");
 			
-			process_timer=0;
 		}	
 		
 
@@ -115,6 +140,7 @@ int main(int argc, char *argv[]) {
 				perror("close read side in parent process");*/  
 			if(write(fd[pid][1], &req.pid, sizeof(req))==-1)
 				perror("write parent process"); 
+			
 			/*if(close(fd[pid][1])==-1)
 				perror("close write side in parent process");*/
 			
@@ -221,15 +247,15 @@ void timer_handler(union sigval sv) {
 	if(timer_delete(timerid)!=0){
 		perror("Timer can not destroy successfully");
 	}
+	close(fileDesc);
 	kill(0,SIGTERM);
 	exit(EXIT_SUCCESS);
 }
 
-
-//child oldugunda direk exit yaparsan childlar orphan durumuna duser. Bunu kontrol et.
 void process_timer_handler(union sigval sv) {
 	process_timer=1;
 }
+
 int money_creator(pid_t pid){
 	int money=rand();
 	money*=54464;
