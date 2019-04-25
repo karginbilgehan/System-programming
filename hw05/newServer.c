@@ -110,7 +110,9 @@ int main(int argc, char *argv[]) {
 				perror("close");
 			
 			int processNo=getpid();
-			sprintf(logData, "%d              %d                 %d%c%c", tempPid,processNo,randMoney,'\n','\0');
+			clock_t curTime=clock();
+			
+			sprintf(logData, "%d              %d                 %d              %lf%c%c", tempPid,processNo,randMoney,(double)curTime/CLOCKS_PER_SEC,'\n','\0');
 			while(logData[counter]!='\0'){
 				counter ++;
 			}
@@ -244,9 +246,18 @@ void timer_for_Process(){
 void timer_handler(union sigval sv) {
 	//printf("Bank has been ");
         /* Will print "5 seconds elapsed." */
+	char endPoint[100];
+	int counter=0;
 	if(timer_delete(timerid)!=0){
 		perror("Timer can not destroy successfully");
 	}
+	
+	sprintf(endPoint,"%d saniye dolmustur. X musteriye hizmet verdik.%c%c",totalTime,'\n','\0');
+	while(endPoint[counter]!='\0'){
+		counter ++;
+	}
+	if(write(fileDesc,endPoint,counter) < 0)
+		perror("write log 6");
 	close(fileDesc);
 	kill(0,SIGTERM);
 	exit(EXIT_SUCCESS);
