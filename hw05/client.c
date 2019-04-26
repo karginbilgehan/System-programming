@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
 			perror("open");
 		if (read(clientFd, &resp, sizeof(struct response)) != sizeof(struct response))
 			perror("Can't read response from server");
-		printf("%d TL odendi.\n", resp.money);
+		printf("Musteri %d %d lira aldi.\n",req.pid, resp.money);
 		exit(EXIT_SUCCESS);	
 	}	
 	for(i=0;i<totalProcess;i++){
