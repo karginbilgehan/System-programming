@@ -14,12 +14,12 @@ void process_timer_handler(union sigval sv);
 void timer_for_Process();
 int money_creator(pid_t pid);
 void childHandler();
+void lastKnowledge(int totalProcess);
 
 timer_t timerid; // it is for server time 
 int process_timer=0; // it is for 1.5 second 
 int fileDesc;
 int totalTime;
-int totalProcess=0;
 int forChildProcess[4]={0};
 pid_t childPid[4];
 int endForChild=0;
@@ -34,10 +34,12 @@ int main(int argc, char *argv[]) {
 	int bankTime=atoi(argv[1]);
 	pid_t p;
 	int fd[4][2];
-	start_timer(bankTime);
+	int totalProcess=0;
+	
 	char forHeader[]="clientPid         process No           para           İslemin Bitis Zamani";
 	char forHeader2[]="---------         ----------           ----           --------------------";
- 	umask(0); /* So we get the permissions we want */
+	start_timer(bankTime); 	
+	umask(0); /* So we get the permissions we want */
 	remove(FILE_NAME);
 	totalTime=atoi(argv[1]);
 	fileDesc=open(FILE_NAME, O_RDWR | O_CREAT, 0666);
@@ -82,10 +84,11 @@ int main(int argc, char *argv[]) {
 	if(p==0)
 	{
 		signal(SIGUSR1,childHandler);
+		fcntl(fd[totalChild][0],F_SETFL,O_NONBLOCK);
 		while(endForChild == 0){
 			
 			pid_t tempPid;
-			while(read(fd[totalChild][0], &tempPid, sizeof(req))<=0);
+			while(read(fd[totalChild][0], &tempPid, sizeof(req)) == sizeof(req)){
 			
 			timer_for_Process();
 			char logData[10]={0};
@@ -122,17 +125,19 @@ int main(int argc, char *argv[]) {
 			int processNo=getpid();
 			clock_t curTime=clock();
 			
-			sprintf(logData, "%d              %d                   %d              %lf%c%c", tempPid,processNo%4,randMoney,(double)curTime/CLOCKS_PER_SEC,'\n','\0');
+			sprintf(logData, "%d              %d                   %d              %lf%c%c", tempPid,(processNo%4)+1,randMoney,(double)curTime/CLOCKS_PER_SEC,'\n','\0');
 			while(logData[counter]!='\0'){
 				counter ++;
 			}
 			if(write(fileDesc,logData,counter) < 0)
 				perror("write log 5");
+			}
 			
 		}
-
-
-		kill(0,SIGKILL);
+		_exit(EXIT_SUCCESS);
+		//close(clientFd);
+		//unlink(clientFifo);
+		//kill(0,SIGKILL);
 	
 		
 
@@ -147,7 +152,7 @@ int main(int argc, char *argv[]) {
 			if (read(serverFd, &req, sizeof(struct request)) == sizeof(struct request)) {
 				
 		
-			printf("req.pid : %d\n", req.pid);
+			//printf("req.pid : %d\n", req.pid);
 			int pid=req.pid%4;
 			forChildProcess[pid]+=1;
 			totalProcess++;
@@ -161,9 +166,26 @@ int main(int argc, char *argv[]) {
 				perror("close write side in parent process");*/
 			
 			//seqNum += req.seqLen; /* Update our sequence number */
+			}
 		}
-	}
-		
+
+
+		while(read(serverFd, &req, sizeof(struct request))!=0){
+			resp.money = -10;
+			
+			snprintf(clientFifo, CLIENT_FIFO_NAME_LEN, CLIENT_FIFO_TEMPLATE, (long)req.pid);
+			
+			clientFd = open(clientFifo, O_WRONLY);
+			if (clientFd == -1) { /* Open failed, give up on client */
+				break;
+			}
+			
+			if (write(clientFd, &resp, sizeof(struct response)) ==0 )
+				fprintf(stderr, "Error writing to FIFO %s\n", clientFifo);
+		}	
+		lastKnowledge(totalProcess);
+		close(serverFd);
+		unlink(SERVER_FIFO);
 		kill(0,SIGKILL);
 	}
 	
@@ -262,6 +284,23 @@ void timer_for_Process(){
 void timer_handler(union sigval sv) {
 	//printf("Bank has been ");
         /* Will print "5 seconds elapsed." */
+	int i;
+	if(timer_delete(timerid)!=0){
+		perror("Timer can not destroy successfully");
+	}
+	endForParent=1;
+	for(i=0;i<4;++i){
+		kill(childPid[i],SIGUSR1);
+	}
+	
+	
+}
+
+void process_timer_handler(union sigval sv) {
+	process_timer=1;
+}
+
+void lastKnowledge(int totalProcess){
 	char endPoint[100];
 	char endPoint2[100];
 	char endPoint3[100];
@@ -272,11 +311,6 @@ void timer_handler(union sigval sv) {
 	int counter3=0;
 	int counter4=0;
 	int counter5=0;
-	int i;
-	if(timer_delete(timerid)!=0){
-		perror("Timer can not destroy successfully");
-	}
-	
 	sprintf(endPoint,"%d saniye dolmustur. %d musteriye hizmet verdik.%c%c",totalTime,totalProcess,'\n','\0');
 	while(endPoint[counter]!='\0'){
 		counter ++;
@@ -323,22 +357,12 @@ void timer_handler(union sigval sv) {
 	}
 	if(write(fileDesc,endPoint5,counter5) < 0)
 		perror("write log 10");
-	
-	close(fileDesc);
-	for(i=0;i<4;++i){
-		kill(childPid[i],SIGUSR1);
-	}
-	
-	endForParent=1;
-}
 
+}
 void childHandler(){
 	endForChild=1;
 }
 
-void process_timer_handler(union sigval sv) {
-	process_timer=1;
-}
 
 int money_creator(pid_t pid){
 	int money=rand();
