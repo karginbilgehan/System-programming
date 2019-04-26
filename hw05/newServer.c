@@ -13,12 +13,17 @@ void start_timer(int bankTime);
 void process_timer_handler(union sigval sv);
 void timer_for_Process();
 int money_creator(pid_t pid);
+void childHandler();
 
 timer_t timerid; // it is for server time 
 int process_timer=0; // it is for 1.5 second 
 int fileDesc;
 int totalTime;
 int totalProcess=0;
+int forChildProcess[4]={0};
+pid_t childPid[4];
+int endForChild=0;
+int endForParent=0;
 int main(int argc, char *argv[]) {
 	int serverFd, dummyFd, clientFd,i,totalChild;
 	char clientFifo[CLIENT_FIFO_NAME_LEN];
@@ -67,16 +72,21 @@ int main(int argc, char *argv[]) {
 		p = fork();
 		if (p == 0)
 			break;
+		else{
+			childPid[totalChild]=p;   
+		}
 	}
 	
 	
 	
 	if(p==0)
 	{
-	
-		for(;;){
+		signal(SIGUSR1,childHandler);
+		while(endForChild == 0){
 			
 			pid_t tempPid;
+			while(read(fd[totalChild][0], &tempPid, sizeof(req))<=0);
+			
 			timer_for_Process();
 			char logData[10]={0};
 			int counter=0;
@@ -89,8 +99,6 @@ int main(int argc, char *argv[]) {
 			//printf("process timer %d \n",process_timer);
 			process_timer=0;
 			while(process_timer==0);
-			
-			while(read(fd[totalChild][0], &tempPid, sizeof(req))<=0);
 			//printf("temp pid : %d \n",tempPid);
 			//!!! bu kısımdan altı child process içinde olacak.
 			/* Open client FIFO (previously created by client) */
@@ -114,30 +122,34 @@ int main(int argc, char *argv[]) {
 			int processNo=getpid();
 			clock_t curTime=clock();
 			
-			sprintf(logData, "%d              %d                 %d              %lf%c%c", tempPid,processNo,randMoney,(double)curTime/CLOCKS_PER_SEC,'\n','\0');
+			sprintf(logData, "%d              %d                   %d              %lf%c%c", tempPid,processNo%4,randMoney,(double)curTime/CLOCKS_PER_SEC,'\n','\0');
 			while(logData[counter]!='\0'){
 				counter ++;
 			}
 			if(write(fileDesc,logData,counter) < 0)
 				perror("write log 5");
 			
-		}	
+		}
+
+
+		kill(0,SIGKILL);
+	
 		
 
 	}
 	if(p>0)
 	{	
 		
-		
-		for (;;) 
+		fcntl(serverFd,F_SETFL,O_NONBLOCK);
+		while(endForParent==0) 
 		{ /* Read requests and send responses */
 			//printf("buraya girdim. \n");
-			if (read(serverFd, &req, sizeof(struct request)) != sizeof(struct request)) {
-				fprintf(stderr, "Error reading request; discarding\n");
-				continue; /* Either partial read or error */
-			}
+			if (read(serverFd, &req, sizeof(struct request)) == sizeof(struct request)) {
+				
+		
 			printf("req.pid : %d\n", req.pid);
 			int pid=req.pid%4;
+			forChildProcess[pid]+=1;
 			totalProcess++;
 			
 			/*if(close(fd[pid][0])==-1)
@@ -150,7 +162,9 @@ int main(int argc, char *argv[]) {
 			
 			//seqNum += req.seqLen; /* Update our sequence number */
 		}
-
+	}
+		
+		kill(0,SIGKILL);
 	}
 	
 }
@@ -249,7 +263,16 @@ void timer_handler(union sigval sv) {
 	//printf("Bank has been ");
         /* Will print "5 seconds elapsed." */
 	char endPoint[100];
+	char endPoint2[100];
+	char endPoint3[100];
+	char endPoint4[100];
+	char endPoint5[100];
 	int counter=0;
+	int counter2=0;
+	int counter3=0;
+	int counter4=0;
+	int counter5=0;
+	int i;
 	if(timer_delete(timerid)!=0){
 		perror("Timer can not destroy successfully");
 	}
@@ -258,12 +281,59 @@ void timer_handler(union sigval sv) {
 	while(endPoint[counter]!='\0'){
 		counter ++;
 	}
+	
 	if(write(fileDesc,endPoint,counter) < 0)
 		perror("write log 6");
-	close(fileDesc);
 	
-	kill(0,SIGTERM);
-	exit(EXIT_SUCCESS);
+	/////////////////////////////////////////////////////
+	sprintf(endPoint2,"process %d %d musteriye hizmet sundu.\n%c",1,forChildProcess[0],'\0');
+	
+	while(endPoint2[counter2]!='\0'){
+		counter2 ++;
+	}
+	if(write(fileDesc,endPoint2,counter2) < 0)
+		perror("write log 7");
+	
+	
+	/////////////////////////////////////////////////////
+	sprintf(endPoint3,"process %d %d musteriye hizmet sundu.\n%c",2,forChildProcess[1],'\0');
+	
+	while(endPoint3[counter3]!='\0'){
+		counter3 ++;
+	}
+	if(write(fileDesc,endPoint3,counter3) < 0)
+		perror("write log 8");
+		
+	
+	////////////////////////////////////////////////////	
+
+	sprintf(endPoint4,"process %d %d musteriye hizmet sundu.\n%c",3,forChildProcess[2],'\0');
+	while(endPoint4[counter4]!='\0'){
+		counter4 ++;
+	}
+	if(write(fileDesc,endPoint4,counter4) < 0)
+		perror("write log 9");	
+
+	////////////////////////////////////////////////////
+
+	sprintf(endPoint5,"process %d %d musteriye hizmet sundu.\n%c",4,forChildProcess[3],'\0');
+	
+	while(endPoint5[counter5]!='\0'){
+		counter5 ++;
+	}
+	if(write(fileDesc,endPoint5,counter5) < 0)
+		perror("write log 10");
+	
+	close(fileDesc);
+	for(i=0;i<4;++i){
+		kill(childPid[i],SIGUSR1);
+	}
+	
+	endForParent=1;
+}
+
+void childHandler(){
+	endForChild=1;
 }
 
 void process_timer_handler(union sigval sv) {
