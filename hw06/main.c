@@ -28,8 +28,10 @@ char realSource[PATH_LEN];
 char realDest[PATH_LEN];
 static pthread_mutex_t  lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t full = PTHREAD_COND_INITIALIZER; 
-static pthread_cond_t empty = PTHREAD_COND_INITIALIZER; 
+static pthread_cond_t empty = PTHREAD_COND_INITIALIZER;
+static int totalFile=0; 
 static int bufSize;
+int doneProducer=0;
 /* The main program.  */
 int main (int argc, char * argv[]) { 
 	pthread_t thread_id;
@@ -62,10 +64,12 @@ int main (int argc, char * argv[]) {
 	/* Print o’s continuously to stderr.  */
   
 	pthread_join(thread_id,NULL);
+	doneProducer=1;
 	for(i=0;i<numberOfConsumer;++i){
 		pthread_join(cthread_id[i],NULL);
 	}
 	//printf("retVal: %d \n",ret);
+	
 	free(source);  
 	printf("\n");
 	return 0; // join kullanmazsan burada ne kullandıgın önemli. Eğer join yokken return kullanırsan çalışan bütün threadleri bitirir. 
@@ -75,11 +79,13 @@ void* producer (void* unused) {
 	char curDirectories[2][PATH_LEN];
 	char filePathSource[PATH_LEN];
 	char filePathDest[PATH_LEN];
-	/*if(errorCheck=pthread_mutex_lock(&lock)){
+	if(errorCheck=pthread_mutex_lock(&lock)){
 		fprintf(stderr,"There is an error in producer lock \n");
-		return (void*) errorCheck;	
-	}*/
-        
+		//return (void*) errorCheck;	
+	}
+        while(totalFile>=bufSize){
+		 pthread_cond_wait (&empty, &lock);
+	}
 	strcpy(curDirectories[0],((char(*)[PATH_LEN])unused)[0]); // it is for source directory
 	strcpy(curDirectories[1],((char(*)[PATH_LEN])unused)[1]); // it is for destination directory
 	
@@ -130,11 +136,19 @@ void* producer (void* unused) {
 			  //printf("in fd: %d \n",source[ind].infd);
 			  //printf("out fd: %d \n",source[ind].outfd);
 			  //printf("filepath: %s \n",source[ind].filename);
+			  totalFile++;
+			  if (errorCheck = pthread_cond_signal(&full)) {      
+					pthread_mutex_unlock(&lock);      
+					fprintf(stderr,"There is an error in producer signal \n");   
+			  }
 			  ind++;
 		  }
 		  
-		
-              	 
+		  
+              	 if(errorCheck=pthread_mutex_unlock(&lock)){
+			fprintf(stderr,"There is an error in producer unlock \n");
+		//return (void*) errorCheck;	
+		 }
 		  
   	}
 	
@@ -142,10 +156,37 @@ void* producer (void* unused) {
 }
 
 void* consumer(void* unused){
+	char fileContent;
+	int counter;
+	if (errorCheck = pthread_mutex_lock(&lock))      
+		   fprintf(stderr,"There is an error in consumer unlock \n");
+	while ((totalFile <= 0))      
+		errorCheck = pthread_cond_wait (&full, &lock); 
+	 
+	if (errorCheck) {      
+		pthread_mutex_unlock(&lock);      
+		fprintf(stderr,"There is an error in consumer wait \n");
+	}
+	while(read(source[ind].infd,&fileContent,1)!='\0'){
+			write(source[ind].outfd,&fileContent,1);	 
+	}
+	printf("girdim \n");
+	//printf("file content: %s \n",fileContent);
+	//write(source[ind].outfd,fileContent,2);
+	
+	totalFile--;
+	if (errorCheck = pthread_cond_signal(&empty)) {      
+		 pthread_mutex_unlock(&lock);      
+		 fprintf(stderr,"There is an error in consumer signal \n");   
+	}
 
-	fprintf(stderr,"consumer \n");
-
-
-
-
+	if(errorCheck=pthread_mutex_unlock(&lock)){
+		fprintf(stderr,"There is an error in consumer unlock \n");
+	}
+	ind--;
+	
+	if(ind==0 && doneProducer==1){
+		printf("girdim2 \n");
+		exit(EXIT_FAILURE);
+	}
 }
