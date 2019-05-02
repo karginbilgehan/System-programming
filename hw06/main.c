@@ -184,7 +184,8 @@ void* consumer(void* unused){
 		fprintf(stderr,"There is an error in consumer unlock \n");
 	}
 	ind--;
-	
+	//printf("index: %d \n",ind);
+	//printf("done: %d \n",doneProducer);
 	if(ind==0 && doneProducer==1){
 		printf("girdim2 \n");
 		exit(EXIT_FAILURE);
