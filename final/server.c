@@ -39,7 +39,7 @@ void * socketThread(void *arg)
   //printf("girdim \n");
   int newSocket = *((int *)arg);
   int i;
-  int outFd;
+  int outFd,wc;//wc means word count
   DIR *directory;
   char curDirPath[PATH_LEN];//kopyalama yapılacak directoryi tutmak için
   char copiedFile[PATH_LEN];
@@ -74,9 +74,12 @@ void * socketThread(void *arg)
   //printf("file name: %s \n",fileInformation.filename);
   //printf("file Content: %s \n",fileInformation.file_content);
   sprintf(copiedFile,"%s/%s",curDirPath,fileInformation.filename);
-  if(outFd=open(copiedFile, W_FLAGS, W_PERMS)==-1)
-			fprintf(stderr,"File can not open for wright");
-  
+  if((outFd=open(copiedFile, W_FLAGS, W_PERMS))==-1)
+	fprintf(stderr,"File can not open for write");
+  printf("out: %d \n",outFd);
+  if((wc=write(outFd,fileInformation.file_content,strlen(fileInformation.file_content)))==-1)
+		fprintf(stderr,"There is an error for write \n"); 
+  //printf("wc: %d \n",wc);
   counter=0; //counter degerini sifirlamak icin. Clientin dosya adini bulmada kullaniyoruz.(parseDirectoryName Fonk.)
   for(i=0;i<sizeof(clientDirectory);++i){
 	clientDirectory[i]='\0';
@@ -158,10 +161,10 @@ void parseDirectoryName(char* fullPath){
 		counter ++;
 	}
 	//printf("counter %d \n",counter);
-        for(i=size-counter;i<size;++i){
+        for(i=size-counter;i<size-1;++i){
 		clientDirName[j]=fullPath[i];
 		++j;
 	}
-	clientDirName[j]='\0';
+	//clientDirName[j]='\0';
 	
 }
