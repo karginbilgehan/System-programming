@@ -6,11 +6,36 @@
 #include <stdlib.h>
 #include <fcntl.h> // for open
 #include <unistd.h> // for close
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <dirent.h>
+#define FILE_LEN 128
+#define PATH_LEN 256
+#define CONTENT_LEN 8192
+#define R_FLAGS O_RDONLY 
 
+typedef struct {   
+	char file_content[CONTENT_LEN];   
+	char filename[FILE_LEN]; 
+} fileInf;
+
+void socketOperation(char* firstDirName);
+void fileOperation(char* dirName,int socket);
+
+fileInf fileInformation;
 
 int main(int argc, char* argv[]){
 
-  //printf("In thread\n");
+  socketOperation(argv[1]);  
+   // !feof(fp)
+ 
+  return 0;
+}
+// client çalştırıldığında gelen directory'e ait işlemleri yapmak için gerekli başlangıç fonksiyonu
+// socket e clientdan gelen ilk directory ismini gonderir.
+void socketOperation(char* firstDirName){
+
+	//printf("In thread\n");
   //printf("client deneme2 \n");
   char dirName[256];//gönderilecek olan directorynin ismi
   char buffer[1024];
@@ -35,12 +60,13 @@ int main(int argc, char* argv[]){
     if(connect(clientSocket, (struct sockaddr *) &serverAddr, addr_size)==0)
 		printf("connected \n");
     //printf("client deneme \n");
-    sprintf(dirName,"%s",argv[1]);
+    sprintf(dirName,"%s",firstDirName);//firstDirName argumandan girilen full pathi belirtir
     //printf("client deneme 7 \n");
-    if( send(clientSocket , dirName , strlen(dirName) , 0) < 0)
+    if( send(clientSocket , dirName , sizeof(dirName) , 0) < 0)
     {
             printf("Send failed\n");
     }
+    fileOperation(dirName,clientSocket);
     //printf("client deneme 8 \n");
     //Read the message from the server into the buffer
     /*if(recv(clientSocket, buffer, 1024, 0) < 0)
@@ -51,7 +77,39 @@ int main(int argc, char* argv[]){
     //Print the received message
     //printf("Data received: %s\n",buffer);
     close(clientSocket);
-   
- 
-  return 0;
+}
+//directory içindeki filelara ait contenti ve filenami struct yardımıyla servera gonderir
+void fileOperation(char* dirName,int socket){
+        DIR *directory=opendir(dirName);
+	struct dirent *currentFile;
+	char clientFilePath[PATH_LEN];
+        int i=0;
+	FILE *filePointer;
+    	char ch;
+        while((currentFile = readdir(directory)) != NULL ){
+		if ( (strcmp(currentFile->d_name, ".") == 0) || (strcmp(currentFile->d_name, "..") == 0) )
+        		continue;
+                 
+                //dosya için
+     
+                sprintf(clientFilePath, "%s/%s", dirName , currentFile->d_name);
+                //printf("fileName: %s \n",clientFilePath);
+		filePointer=fopen(clientFilePath,"r");
+		if(filePointer==NULL){
+			fprintf(stderr,"File can not be open \n");
+		}
+               
+		while((ch=getc(filePointer))!=EOF){
+			fileInformation.file_content[i]=ch;
+			++i;
+		}
+		sprintf(fileInformation.filename,"%s",currentFile->d_name);
+		send(socket,fileInformation.filename,sizeof(fileInformation.filename),0);
+		send(socket,fileInformation.file_content,sizeof(fileInformation.file_content),0);
+
+		
+		//printf("file name: %s \n",fileInformation.filename);
+		//printf("file Content: %s \n",fileInformation.file_content);
+		
+        }
 }
