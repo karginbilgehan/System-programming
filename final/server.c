@@ -7,13 +7,31 @@
 #include <fcntl.h> // for open
 #include <unistd.h> // for close
 #include<pthread.h>
-char client_message[2000];
+#include <dirent.h>
+
+#define W_FLAGS (O_WRONLY | O_CREAT) 
+#define W_PERMS (S_IRUSR | S_IWUSR)
+#define FILE_LEN 128
+#define PATH_LEN 256
+#define CONTENT_LEN 8192
+
+
+char clientDirectory[256];//client'ın saklamak istedigi directory icin
 char buffer[1024];
-char temp[100];
+char curServerDir[PATH_LEN];
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 int counter=0;
 static char clientDirName[128]={0};
-char* parseDirectoryName(char* fullPath);
+
+typedef struct {   
+	char file_content[CONTENT_LEN];   
+	char filename[FILE_LEN]; 
+} fileInf;
+
+fileInf fileInformation;//client tarafından gelen file bilgilerini almak için
+
+
+void parseDirectoryName(char* fullPath);
 
 void * socketThread(void *arg)
 {
@@ -21,31 +39,54 @@ void * socketThread(void *arg)
   //printf("girdim \n");
   int newSocket = *((int *)arg);
   int i;
-  recv(newSocket , client_message , 2000 , 0);
+  int outFd;
+  DIR *directory;
+  char curDirPath[PATH_LEN];//kopyalama yapılacak directoryi tutmak için
+  char copiedFile[PATH_LEN];
+  struct dirent *currentFile;
+  
+  recv(newSocket , clientDirectory , sizeof(clientDirectory) , 0);
   // Send message to the client socket 
   pthread_mutex_lock(&lock);
-  char *message = malloc(sizeof(client_message)+20);
+  char *message = malloc(sizeof(clientDirectory)+20);
   strcpy(message,"Client Directory Path: ");
-  strcat(message,client_message);
+  strcat(message,clientDirectory);
   strcat(message,"\n");
   strcpy(buffer,message);
   free(message);
   printf("%s \n",buffer);
   //printf("len: %d \n",strlen(buffer));
-  getcwd(temp,sizeof(temp));
-  printf("current: %s \n",temp);
+  getcwd(curServerDir,sizeof(curServerDir));
+  printf("current: %s \n",curServerDir);
+  
   parseDirectoryName(buffer);
-  printf("Exit socketThread \n");
-  pthread_mutex_unlock(&lock);
-  close(newSocket); 
-  counter=0;
- 
-  for(i=0;i<sizeof(client_message);++i){
-	client_message[i]='\0';
+  printf("client directorty: %s \n",clientDirName);
+  directory=opendir(clientDirName);
+  if(directory==NULL){
+	if(mkdir(clientDirName, S_IRUSR | S_IWUSR | S_IXUSR)==-1)
+		fprintf(stderr,"Directory can not create successfully \n");
+		
+  }
+  sprintf(curDirPath,"%s/%s",curServerDir,clientDirName);//Server Directory içine clientdan gelen directoryi olusturduktan sonra client directorysi içinde işlem yapabilmek için
+  printf("kopyalama yapilacak yer: %s \n",curDirPath);   
+  recv(newSocket , fileInformation.filename , sizeof(fileInformation.filename) , 0);
+  recv(newSocket , fileInformation.file_content , sizeof(fileInformation.file_content) , 0);
+  //printf("file name: %s \n",fileInformation.filename);
+  //printf("file Content: %s \n",fileInformation.file_content);
+  sprintf(copiedFile,"%s/%s",curDirPath,fileInformation.filename);
+  if(outFd=open(copiedFile, W_FLAGS, W_PERMS)==-1)
+			fprintf(stderr,"File can not open for wright");
+  
+  counter=0; //counter degerini sifirlamak icin. Clientin dosya adini bulmada kullaniyoruz.(parseDirectoryName Fonk.)
+  for(i=0;i<sizeof(clientDirectory);++i){
+	clientDirectory[i]='\0';
   }
   for(i=0;i<sizeof(clientDirName);++i){
 	clientDirName[i]='\0';
   }
+  pthread_mutex_unlock(&lock);
+  close(newSocket);
+  printf("Exit socketThread \n");
   pthread_exit(NULL);
 }
 int main(int argc, char* argv[]){
@@ -57,7 +98,7 @@ int main(int argc, char* argv[]){
   sprintf(serverName,"%s/%s","/home/cse312/Desktop",argv[1]); // BU KISIM DEGİSMELİ 
   printf("serverName: %s \n",serverName);
   if(chdir(serverName)<0)
-	printf("Current Directory has not changed successfully \n"); // server klasörü altında gerekli işlemleri yapmak için
+	printf("Current Directory can not change successfully \n"); // server klasörü altında gerekli işlemleri yapmak için
   
   //Create the socket. 
   serverSocket = socket(PF_INET, SOCK_STREAM, 0);
@@ -106,7 +147,7 @@ int main(int argc, char* argv[]){
   return 0;
 }
 
-char* parseDirectoryName(char* fullPath){
+void parseDirectoryName(char* fullPath){
 	int size,i,j=0;
 
 	
@@ -121,6 +162,6 @@ char* parseDirectoryName(char* fullPath){
 		clientDirName[j]=fullPath[i];
 		++j;
 	}
-	printf("client directorty:%s \n",clientDirName);
-	return clientDirName;
+	clientDirName[j]='\0';
+	
 }
