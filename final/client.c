@@ -87,6 +87,7 @@ void fileOperation(char* dirName,int socket){
 	FILE *filePointer;
     	char ch;
         while((currentFile = readdir(directory)) != NULL ){
+		printf("girdim \n");
 		if ( (strcmp(currentFile->d_name, ".") == 0) || (strcmp(currentFile->d_name, "..") == 0) )
         		continue;
                  
