@@ -16,7 +16,8 @@
 
 typedef struct {   
 	char file_content[CONTENT_LEN];   
-	char filename[FILE_LEN]; 
+	char filename[FILE_LEN];
+	//int file_counter;
 } fileInf;
 
 void socketOperation(char* firstDirName);
@@ -25,7 +26,7 @@ void fileOperation(char* dirName,int socket);
 fileInf fileInformation;
 
 int main(int argc, char* argv[]){
-
+  //fileInformation.file_counter=0;
   socketOperation(argv[1]);  
    // !feof(fp)
  
@@ -86,8 +87,9 @@ void fileOperation(char* dirName,int socket){
         int i=0;
 	FILE *filePointer;
     	char ch;
+	
         while((currentFile = readdir(directory)) != NULL ){
-		printf("girdim \n");
+		//printf("girdim \n");
 		if ( (strcmp(currentFile->d_name, ".") == 0) || (strcmp(currentFile->d_name, "..") == 0) )
         		continue;
                  
@@ -104,13 +106,19 @@ void fileOperation(char* dirName,int socket){
 			fileInformation.file_content[i]=ch;
 			++i;
 		}
+		fileInformation.file_content[i]='\0';
+     		i=0;
 		sprintf(fileInformation.filename,"%s",currentFile->d_name);
 		send(socket,fileInformation.filename,sizeof(fileInformation.filename),0);
 		send(socket,fileInformation.file_content,sizeof(fileInformation.file_content),0);
-
+     		
+		
 		
 		//printf("file name: %s \n",fileInformation.filename);
 		//printf("file Content: %s \n",fileInformation.file_content);
 		
         }
+	//fileInformation.file_counter=1;
+	//send(socket,&fileInformation.file_counter,sizeof(fileInformation.file_counter),0);
+	
 }
