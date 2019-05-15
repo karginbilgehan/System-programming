@@ -1,189 +1,125 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<sys/socket.h>
-#include<netinet/in.h>
-#include<string.h>
+#include <stdio.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <string.h>
 #include <arpa/inet.h>
+#include <stdlib.h>
 #include <fcntl.h> // for open
 #include <unistd.h> // for close
-#include<pthread.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <dirent.h>
-
-#define W_FLAGS (O_WRONLY | O_CREAT) 
-#define W_PERMS (S_IRUSR | S_IWUSR)
 #define FILE_LEN 128
 #define PATH_LEN 256
 #define CONTENT_LEN 100000
-
-
-char clientDirectory[256];//client'ın saklamak istedigi directory icin
-char buffer[1024];
-char curServerDir[PATH_LEN];
-pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-int counter=0;
-static char clientDirName[128]={0};
+#define R_FLAGS O_RDONLY 
 
 typedef struct {   
 	char file_content[CONTENT_LEN];   
 	char filename[FILE_LEN];
-	//int  file_counter; 
+	//int file_counter;
 } fileInf;
 
-fileInf fileInformation;//client tarafından gelen file bilgilerini almak için
+void socketOperation(char* firstDirName);
+void fileOperation(char* dirName,int socket);
 
+fileInf fileInformation;
 
-void parseDirectoryName(char* fullPath);
-
-void * socketThread(void *arg)
-{
-  
-  //printf("girdim \n");
-  int newSocket = *((int *)arg);
-  int i,j=0;
-  int outFd;
-  int wc;//wc means word count
-  DIR *directory;
-  char curDirPath[PATH_LEN];//kopyalama yapılacak directoryi tutmak için
-  char copiedFile[PATH_LEN];
-  struct dirent *currentFile;
-  
-  recv(newSocket , clientDirectory , sizeof(clientDirectory) , 0);
-  // Send message to the client socket 
-  pthread_mutex_lock(&lock);
-  char *message = malloc(sizeof(clientDirectory)+20);
-  strcpy(message,"Client Directory Path: ");
-  strcat(message,clientDirectory);
-  strcat(message,"\n");
-  strcpy(buffer,message);
-  free(message);
-  printf("%s \n",buffer);
-  //printf("len: %d \n",strlen(buffer));
-  getcwd(curServerDir,sizeof(curServerDir));
-  printf("current: %s \n",curServerDir);
-  
-  parseDirectoryName(buffer);
-  printf("client directorty: %s \n",clientDirName);
-  directory=opendir(clientDirName);
-  if(directory==NULL){
-	if(mkdir(clientDirName, S_IRUSR | S_IWUSR | S_IXUSR)==-1)
-		fprintf(stderr,"Directory can not create successfully \n");
-		
-  }
-  sprintf(curDirPath,"%s/%s",curServerDir,clientDirName);//Server Directory içine clientdan gelen directoryi olusturduktan sonra client directorysi içinde işlem yapabilmek için
-  printf("kopyalama yapilacak yer: %s \n",curDirPath);
-  while(j<10){
-          //printf("girdim \n");
-	 
-	  recv(newSocket , fileInformation.filename , sizeof(fileInformation.filename) , 0);
-	  recv(newSocket , fileInformation.file_content , sizeof(fileInformation.file_content) , 0);
-	  //recv(newSocket , &fileInformation.file_counter , sizeof(fileInformation.file_counter) , 0);
-	  printf("file name: %s \n",fileInformation.filename);
-	  //printf("file Content: %s \n",fileInformation.file_content);
-	 // printf("file counter: %d \n",fileInformation.file_counter);
-	  sprintf(copiedFile,"%s/%s",curDirPath,fileInformation.filename);
-	  printf("copiedFile: %s \n",copiedFile);
-	  if((outFd=open(copiedFile,W_FLAGS , W_PERMS))==-1){
-			fprintf(stderr,"File can not open for write \n");
-			break;
-	  }
-	  //printf("file Content: %s \n",fileInformation.file_content);	
-	  //if((wc=fwrite(fileInformation.file_content,1,strlen(fileInformation.file_content),outFd))==-1)
-			//fprintf(stderr,"There is an error for write \n");
-	  //fprintf(outFd,"%s",fileInformation.file_content);	
-	  //printf("out: %d \n",outFd);
-	  if((wc=write(outFd,fileInformation.file_content,strlen(fileInformation.file_content)))==-1)
-			fprintf(stderr,"There is an error for write \n");
-	  j++;
-  }   
-  j=0;
-  //printf("wc: %d \n",wc);
-  counter=0; //counter degerini sifirlamak icin. Clientin dosya adini bulmada kullaniyoruz.(parseDirectoryName Fonk.)
-  for(i=0;i<sizeof(clientDirectory);++i){
-	clientDirectory[i]='\0';
-  }
-  for(i=0;i<sizeof(clientDirName);++i){
-	clientDirName[i]='\0';
-  }
-  pthread_mutex_unlock(&lock);
-  close(newSocket);
-  printf("Exit socketThread \n");
-  pthread_exit(NULL);
-}
 int main(int argc, char* argv[]){
-  int serverSocket, newSocket;
-  struct sockaddr_in serverAddr;
-  struct sockaddr_storage serverStorage;
-  socklen_t addr_size;
-  char serverName[1024];
-
-  //fileInformation.file_counter=1;
-  sprintf(serverName,"%s",argv[1]); // BU KISIM DEGİSMELİ 
-  printf("serverName: %s \n",serverName);
-  if(chdir(serverName)<0)
-	printf("Current Directory can not change successfully \n"); // server klasörü altında gerekli işlemleri yapmak için
-  
-  //Create the socket. 
-  serverSocket = socket(PF_INET, SOCK_STREAM, 0);
-  // Configure settings of the server address struct
-  // Address family = Internet 
-  serverAddr.sin_family = AF_INET;
-  //Set port number, using htons function to use proper byte order 
-  serverAddr.sin_port = htons(8080);
-  //Set IP address to localhost 
-  serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-  //Set all bits of the padding field to 0 
-  memset(serverAddr.sin_zero, '\0', sizeof serverAddr.sin_zero);
-  //Bind the address struct to the socket 
-  if(bind(serverSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr))==0)
-	printf("binded \n");
-  //Listen on the socket, with 40 max connection requests queued 
-  if(listen(serverSocket,50)==0)
-    printf("Listening\n");
-  else
-    printf("Error\n");
-    pthread_t tid[60];
-    int i = 0;
-    //printf("deneme \n");
-    while(1)
-    {
-	//printf("deneme2 \n");
-        //Accept call creates a new socket for the incoming connection
-        addr_size = sizeof serverStorage;
-        newSocket = accept(serverSocket, (struct sockaddr *) &serverStorage, &addr_size);
-        //for each client request creates a thread and assign the client request to it to process
-       //so the main thread can entertain next request
-	//printf("deneme3 \n");
-        if( pthread_create(&tid[i], NULL, socketThread, &newSocket) != 0 )
-           printf("Failed to create thread\n");
-	//printf("deneme4 \n");
-        if( i >= 50)
-        {
-          i = 0;
-          while(i < 50)
-          {
-            pthread_join(tid[i++],NULL);
-          }
-          i = 0;
-        }
-    }
+  //fileInformation.file_counter=0;
+  socketOperation(argv[1]);  
+   // !feof(fp)
+ 
   return 0;
 }
+// client çalştırıldığında gelen directory'e ait işlemleri yapmak için gerekli başlangıç fonksiyonu
+// socket e clientdan gelen ilk directory ismini gonderir.
+void socketOperation(char* firstDirName){
 
-void parseDirectoryName(char* fullPath){
-	int size,i,j=0;
-
+	//printf("In thread\n");
+  //printf("client deneme2 \n");
+  char dirName[256];//gönderilecek olan directorynin ismi
+  char buffer[1024];
+  int clientSocket;
+  struct sockaddr_in serverAddr;
+  socklen_t addr_size;
+  // Create the socket. 
+  
+    clientSocket = socket(PF_INET, SOCK_STREAM, 0);
+    
+  //Configure settings of the server address
+ // Address family is Internet 
+    serverAddr.sin_family = AF_INET;
+  //Set port number, using htons function 
+    serverAddr.sin_port = htons(8080);
+ //Set IP address to localhost
+    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memset(serverAddr.sin_zero, '\0', sizeof serverAddr.sin_zero);
+    //Connect the socket to the server using the address
+    addr_size = sizeof serverAddr;
+   
+    if(connect(clientSocket, (struct sockaddr *) &serverAddr, addr_size)==0)
+		printf("connected \n");
+    //printf("client deneme \n");
+    sprintf(dirName,"%s",firstDirName);//firstDirName argumandan girilen full pathi belirtir
+    //printf("client deneme 7 \n");
+    if( send(clientSocket , dirName , sizeof(dirName) , 0) < 0)
+    {
+            printf("Send failed\n");
+    }
+    fileOperation(dirName,clientSocket);
+    //printf("client deneme 8 \n");
+    //Read the message from the server into the buffer
+    /*if(recv(clientSocket, buffer, 1024, 0) < 0)
+    {
+       printf("Receive failed\n");
+    }*/
+    
+    //Print the received message
+    //printf("Data received: %s\n",buffer);
+    close(clientSocket);
+}
+//directory içindeki filelara ait contenti ve filenami struct yardımıyla servera gonderir
+void fileOperation(char* dirName,int socket){
+        DIR *directory=opendir(dirName);
+	struct dirent *currentFile;
+	char clientFilePath[PATH_LEN];
+        int i=0;
+	FILE *filePointer;
+    	char ch;
 	
-	size=strlen(fullPath);
-	for(i=size-1;i>=0;--i){
-		if(fullPath[i]=='/')
-			break;
-		counter ++;
-	}
-	//printf("counter %d \n",counter);
-        for(i=size-counter;i<size-1;++i){
-		clientDirName[j]=fullPath[i];
-		++j;
-	}
-	//clientDirName[j]='\0';
+        while((currentFile = readdir(directory)) != NULL ){
+		//printf("girdim \n");
+		if ( (strcmp(currentFile->d_name, ".") == 0) || (strcmp(currentFile->d_name, "..") == 0) )
+        		continue;
+                 
+                //dosya için
+     
+                sprintf(clientFilePath, "%s/%s", dirName , currentFile->d_name);
+                //printf("fileName: %s \n",clientFilePath);
+		filePointer=fopen(clientFilePath,"r");
+		if(filePointer==NULL){
+			fprintf(stderr,"File can not be open \n");
+		}
+               
+		while((ch=getc(filePointer))!=EOF){
+			fileInformation.file_content[i]=ch;
+			++i;
+		}
+		fileInformation.file_content[i]='\0';
+     		i=0;
+		sprintf(fileInformation.filename,"%s",currentFile->d_name);
+			
+		printf("file name: %s \n",fileInformation.filename);
+		//printf("file Content: %s \n",fileInformation.file_content);
+		
+		send(socket,fileInformation.filename,sizeof(fileInformation.filename),0);
+		send(socket,fileInformation.file_content,sizeof(fileInformation.file_content),0);
+     		
+		
+	
+        }
+	//fileInformation.file_counter=1;
+	//send(socket,&fileInformation.file_counter,sizeof(fileInformation.file_counter),0);
 	
 }
