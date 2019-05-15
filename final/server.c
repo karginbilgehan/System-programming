@@ -13,7 +13,7 @@
 #define W_PERMS (S_IRUSR | S_IWUSR)
 #define FILE_LEN 128
 #define PATH_LEN 256
-#define CONTENT_LEN 1546786542
+#define CONTENT_LEN 100000
 
 
 char clientDirectory[256];//client'ın saklamak istedigi directory icin
@@ -40,7 +40,8 @@ void * socketThread(void *arg)
   //printf("girdim \n");
   int newSocket = *((int *)arg);
   int i,j=0;
-  int outFd,wc;//wc means word count
+  int outFd;
+  int wc;//wc means word count
   DIR *directory;
   char curDirPath[PATH_LEN];//kopyalama yapılacak directoryi tutmak için
   char copiedFile[PATH_LEN];
@@ -70,25 +71,31 @@ void * socketThread(void *arg)
   }
   sprintf(curDirPath,"%s/%s",curServerDir,clientDirName);//Server Directory içine clientdan gelen directoryi olusturduktan sonra client directorysi içinde işlem yapabilmek için
   printf("kopyalama yapilacak yer: %s \n",curDirPath);
-  while(j<4){
+  while(j<10){
+          //printf("girdim \n");
+	 
 	  recv(newSocket , fileInformation.filename , sizeof(fileInformation.filename) , 0);
 	  recv(newSocket , fileInformation.file_content , sizeof(fileInformation.file_content) , 0);
 	  //recv(newSocket , &fileInformation.file_counter , sizeof(fileInformation.file_counter) , 0);
-	  //printf("file name: %s \n",fileInformation.filename);
+	  printf("file name: %s \n",fileInformation.filename);
 	  //printf("file Content: %s \n",fileInformation.file_content);
 	 // printf("file counter: %d \n",fileInformation.file_counter);
 	  sprintf(copiedFile,"%s/%s",curDirPath,fileInformation.filename);
-	  if((outFd=open(copiedFile, W_FLAGS, W_PERMS))==-1){
+	  printf("copiedFile: %s \n",copiedFile);
+	  if((outFd=open(copiedFile,W_FLAGS , W_PERMS))==-1){
 			fprintf(stderr,"File can not open for write \n");
-			//break;
+			break;
 	  }
-		
+	  //printf("file Content: %s \n",fileInformation.file_content);	
+	  //if((wc=fwrite(fileInformation.file_content,1,strlen(fileInformation.file_content),outFd))==-1)
+			//fprintf(stderr,"There is an error for write \n");
+	  //fprintf(outFd,"%s",fileInformation.file_content);	
 	  //printf("out: %d \n",outFd);
 	  if((wc=write(outFd,fileInformation.file_content,strlen(fileInformation.file_content)))==-1)
 			fprintf(stderr,"There is an error for write \n");
-	  ++j;
+	  j++;
   }   
-   
+  j=0;
   //printf("wc: %d \n",wc);
   counter=0; //counter degerini sifirlamak icin. Clientin dosya adini bulmada kullaniyoruz.(parseDirectoryName Fonk.)
   for(i=0;i<sizeof(clientDirectory);++i){
@@ -110,7 +117,7 @@ int main(int argc, char* argv[]){
   char serverName[1024];
 
   //fileInformation.file_counter=1;
-  sprintf(serverName,"%s/%s","/home/cse312/Desktop",argv[1]); // BU KISIM DEGİSMELİ 
+  sprintf(serverName,"%s",argv[1]); // BU KISIM DEGİSMELİ 
   printf("serverName: %s \n",serverName);
   if(chdir(serverName)<0)
 	printf("Current Directory can not change successfully \n"); // server klasörü altında gerekli işlemleri yapmak için
