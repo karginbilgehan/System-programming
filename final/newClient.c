@@ -10,7 +10,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <sys/stat.h>
-
+#include <time.h>
 #define FILE_LEN 128
 #define PATH_LEN 256
 #define CONTENT_LEN 100000
@@ -23,25 +23,57 @@ typedef struct {
 	int mode;//gonderilen yapının bir klasör mü yoksa dosya mı olduğunu anlamak için 0 for file 1 for directory
 	int rec_mode;
 } fileInf;
-int clientSocket;
+typedef struct {
+	char modifiedTime[PATH_LEN];
+	char filePath[PATH_LEN];
+} modifiedOp;
+
+
 
 void socketOperation(char* firstDirName);
 void fileOperation(char* dirName,int socket);
+int modified(char *dirName);
+void findModifiedFile();
 
+int clientSocket;
 fileInf fileInformation;
+modifiedOp modifiedOperation[512];
+modifiedOp modifiedOperationForFunction[512];
 struct stat file;
+int structSize=0;
+int indexF=0;
+
+
 int main(int argc, char* argv[]){
   //fileInformation.file_counter=0;
-  char modifiedTime[PATH_LEN];
+  int i=0;
+  
   socketOperation(argv[1]);
-  stat("/home/cse312/Desktop/clientDir/deneme.txt",&file);
-  sprintf(modifiedTime,"%s",ctime(&file.st_mtime));
-  printf("last time %s \n",modifiedTime);
-  while(1){
-	
+  indexF=0;
+  
+  while(i<10000000){
+	modified(argv[1]);
+  	indexF=0;
+	//i++;
+	//sleep(15);
+	findModifiedFile();
+  	indexF=0;
+	i++;
   }
+  
+  
+ 
+ 
+  /*for(i=0;i<structSize;++i){
+	printf("file path for modified file for func:  %s \n",modifiedOperationForFunction[i].filePath);
+  }
+
+  for(i=0;i<structSize;++i){
+	printf("file path for modified:  %s \n",modifiedOperation[i].filePath);
+  }*/
+ 
     
-   // !feof(fp)
+
  
   return 0;
 }
@@ -53,7 +85,7 @@ void socketOperation(char* firstDirName){
   //printf("client deneme2 \n");
   char dirName[256];//gönderilecek olan directorynin ismi
   char buffer[1024];
-  
+  char synch[5]="synch";
   struct sockaddr_in serverAddr;
   socklen_t addr_size;
   // Create the socket. 
@@ -80,6 +112,7 @@ void socketOperation(char* firstDirName){
     {
             printf("Send failed\n");
     }
+    recv(clientSocket,synch,sizeof(synch),0);
     fileOperation(dirName,clientSocket);
     //printf("client deneme 8 \n");
     //Read the message from the server into the buffer
@@ -98,7 +131,9 @@ void fileOperation(char* dirName,int socket){
 	struct dirent *currentFile;
 	char clientFilePath[PATH_LEN];
 	char innerDirectoryPath[PATH_LEN];
+	char synch[5]="synch";
         int i=0;
+	
 	FILE *filePointer;
     	char ch;
 	//printf("girdim 3 \n");
@@ -114,23 +149,32 @@ void fileOperation(char* dirName,int socket){
 		if(DT_DIR==currentFile->d_type){
 			fileInformation.mode=1;
 			sprintf(innerDirectoryPath,"%s/%s",dirName,currentFile->d_name);
-			printf("directory name: %s \n",innerDirectoryPath);
+			printf("directory path: %s \n",innerDirectoryPath);
 			sprintf(fileInformation.filename,"%s",currentFile->d_name);
 			sprintf(fileInformation.file_content,"%s","redundant");
-			printf("client file content: %s \n",fileInformation.file_content);
+			//printf("client file content: %s \n",fileInformation.file_content);
 			send(socket,&fileInformation.rec_mode,sizeof(fileInformation.rec_mode),0);
+			recv(socket , synch , sizeof(synch) , 0);
 			send(socket,fileInformation.filename,sizeof(fileInformation.filename),0);
+			recv(socket , synch , sizeof(synch) , 0);
 			send(socket,fileInformation.file_content,sizeof(fileInformation.file_content),0);
+			recv(socket , synch , sizeof(synch) , 0);
 			send(socket,&fileInformation.mode,sizeof(fileInformation.mode),0);
-			
+			recv(socket , synch , sizeof(synch) , 0);			
 			fileOperation(innerDirectoryPath,clientSocket);
 			fileInformation.rec_mode=1;
   			send(socket,&fileInformation.rec_mode,sizeof(fileInformation.rec_mode),0);
+			recv(socket , synch , sizeof(synch) , 0);
 		}
      		else{
 			printf("dosya icin geldim \n");
 			sprintf(clientFilePath, "%s/%s", dirName , currentFile->d_name);
 		        printf("ClientfilePath: %s \n",clientFilePath);
+			
+			stat(clientFilePath,&file);
+   			sprintf(modifiedOperation[indexF].filePath,"%s",clientFilePath);
+			sprintf(modifiedOperation[indexF].modifiedTime,"%s",ctime(&file.st_mtime));
+			
 			filePointer=fopen(clientFilePath,"r");
 			if(filePointer==NULL){
 				fprintf(stderr,"File can not be open \n");
@@ -150,11 +194,18 @@ void fileOperation(char* dirName,int socket){
 			printf("file name: %s \n",fileInformation.filename);
 			//printf("file Content: %s \n",fileInformation.file_content);
 			fileInformation.mode=0;
-			send(socket,&fileInformation.rec_mode,sizeof(fileInformation.rec_mode),0);
-			send(socket,fileInformation.filename,sizeof(fileInformation.filename),0);
-			send(socket,fileInformation.file_content,sizeof(fileInformation.file_content),0);
-			send(socket,&fileInformation.mode,sizeof(fileInformation.mode),0);
 			
+			send(socket,&fileInformation.rec_mode,sizeof(fileInformation.rec_mode),0);
+			recv(socket , synch , sizeof(synch) , 0);
+			send(socket,fileInformation.filename,sizeof(fileInformation.filename),0);
+			recv(socket , synch , sizeof(synch) , 0);
+			send(socket,fileInformation.file_content,sizeof(fileInformation.file_content),0);
+			recv(socket , synch , sizeof(synch) , 0);
+			send(socket,&fileInformation.mode,sizeof(fileInformation.mode),0);
+			recv(socket , synch , sizeof(synch) , 0);
+			structSize++;
+			indexF++;
+		
 		}
                 
      		
@@ -164,4 +215,77 @@ void fileOperation(char* dirName,int socket){
 	//fileInformation.file_counter=1;
 	//send(socket,&fileInformation.file_counter,sizeof(fileInformation.file_counter),0);
 	
+}
+int modified(char *dirName){
+	//printf("dirName %s \n",dirName);
+	DIR *directory=opendir(dirName);
+	struct dirent *currentFile;
+	char clientFilePath[PATH_LEN];
+	char innerDirectoryPath[PATH_LEN];
+	
+	
+	if(directory==NULL){
+		printf("directory is null2 \n");
+	}
+        while((currentFile = readdir(directory)) != NULL ){
+		
+		if ( (strcmp(currentFile->d_name, ".") == 0) || (strcmp(currentFile->d_name, "..") == 0) )
+        		continue;
+                 
+                //dizin için
+		if(DT_DIR==currentFile->d_type){
+			
+			sprintf(innerDirectoryPath,"%s/%s",dirName,currentFile->d_name);
+			//printf("modified directory path: %s \n ",innerDirectoryPath);
+			sprintf(fileInformation.filename,"%s",currentFile->d_name);
+			sprintf(fileInformation.file_content,"%s","redundant");
+			//printf("client file content: %s \n",fileInformation.file_content);
+			modified(innerDirectoryPath);
+			
+			
+		}
+     		else{
+			//printf("dosya icin geldim \n");
+			//printf("girdim \n");
+			sprintf(clientFilePath, "%s/%s", dirName , currentFile->d_name);
+		        //printf("modified ClientfilePath: %s \n",clientFilePath);
+			
+			stat(clientFilePath,&file);
+			//printf("modified ClientfilePath: %s \n",clientFilePath);
+			//printf("INDEX F :%d \n \n",indexF);
+   			sprintf(modifiedOperationForFunction[indexF].filePath,"%s",clientFilePath);
+			sprintf(modifiedOperationForFunction[indexF].modifiedTime,"%s",ctime(&file.st_mtime));
+			indexF++;	
+			
+			//printf("file Content: %s \n",fileInformation.file_content);
+			
+		}
+		
+        }
+	
+	return 0;	
+}
+
+void findModifiedFile(){
+
+	int i=0;
+	int k=0;
+	//printf("GELDIM \n");
+	//printf("struct size %d \n",structSize);
+	while(k<structSize){
+			//printf("girdim2 \n");
+			while(i<structSize){
+				
+				if(strcmp(modifiedOperation[k].filePath,modifiedOperationForFunction[i].filePath)==0){
+					//printf("\n IKI ESIT DOSYA BULDUM \n ");
+					if(strcmp(modifiedOperation[k].modifiedTime,modifiedOperationForFunction[i].modifiedTime)!=0){
+						printf("DOSYA DEGISTI \n");					
+					}
+					
+				}
+				++i;
+			}
+		i=0;
+		++k;
+	}
 }
