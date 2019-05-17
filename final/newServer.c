@@ -50,7 +50,7 @@ void * socketThread(void *arg)
   
   //printf("girdim \n");
   mainSocket new = *((mainSocket *)arg);
-
+  char synch[5]="synch";
   int i,j=0;
     
   DIR *directory;
@@ -59,6 +59,7 @@ void * socketThread(void *arg)
   struct dirent *currentFile;
   
   recv(new.newSocket , clientDirectory , sizeof(clientDirectory) , 0);
+  send(new.newSocket,synch,sizeof(synch),0);
   // Send message to the client socket 
   pthread_mutex_lock(&lock);
   char *message = malloc(sizeof(clientDirectory)+20);
@@ -87,7 +88,7 @@ void * socketThread(void *arg)
 
           //printf("girdim \n");
   receive(new,realclientDirName);
-	 
+  		 
   
   //printf("wc: %d \n",wc);
   counter=0; //counter degerini sifirlamak icin. Clientin dosya adini bulmada kullaniyoruz.(parseDirectoryName Fonk.)
@@ -192,16 +193,21 @@ void receive(mainSocket new,char *realPath){
 	  char copiedFilePath[PATH_LEN];
 	  int wc;//wc means word count
 	  int j=0;
+	  char synch[5]="synch";
  	  DIR *directory;
 	  while(j<20){
 		printf("geldim \n"); 
 		recv(new.newSocket,&fileInformation.rec_mode,sizeof(fileInformation.rec_mode),0);
+		send(new.newSocket,synch,sizeof(synch),0);
 		if(fileInformation.rec_mode==1){
 			break;
 		}
 	  	recv(new.newSocket , fileInformation.filename , sizeof(fileInformation.filename) , 0);
+		send(new.newSocket,synch,sizeof(synch),0);
 	  	recv(new.newSocket , fileInformation.file_content , sizeof(fileInformation.file_content) , 0);
+		send(new.newSocket,synch,sizeof(synch),0);
 	  	recv(new.newSocket , &fileInformation.mode , sizeof(fileInformation.mode) , 0);
+		send(new.newSocket,synch,sizeof(synch),0);
   		
 		  sprintf(copiedFilePath,"%s/%s",realPath,fileInformation.filename);
 		  //printf("file name: %s \n",fileInformation.filename);
