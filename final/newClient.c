@@ -30,7 +30,7 @@ typedef struct {
 
 
 
-void socketOperation(char* firstDirName);
+void socketOperation(char* firstDirName,char *ipAddress, int portNumber);
 void fileOperation(char* dirName,int socket);
 int modified(char *dirName);
 void findModifiedFile();
@@ -42,22 +42,31 @@ modifiedOp modifiedOperationForFunction[512];
 struct stat file;
 int structSize=0;
 int indexF=0;
-
+int changeFile=0;
 
 int main(int argc, char* argv[]){
   //fileInformation.file_counter=0;
   int i=0;
-  
-  socketOperation(argv[1]);
+  int control=0;
+  int portNumber=atoi(argv[3]);  
+  socketOperation(argv[1],argv[2],portNumber);
   indexF=0;
   
-  while(i<10000000){
+  while(i<100){
+	
 	modified(argv[1]);
   	indexF=0;
-	//i++;
-	//sleep(15);
+	
+	sleep(1);
 	findModifiedFile();
   	indexF=0;
+	if(changeFile==1 && control==0){
+		printf("FILE HAS BEN CHANGED \n");
+		//socketOperation(argv[1],argv[2],portNumber);
+		changeFile=0;
+		control ++;
+	}
+	changeFile=0;
 	i++;
   }
   
@@ -79,7 +88,7 @@ int main(int argc, char* argv[]){
 }
 // client çalştırıldığında gelen directory'e ait işlemleri yapmak için gerekli başlangıç fonksiyonu
 // socket e clientdan gelen ilk directory ismini gonderir.
-void socketOperation(char* firstDirName){
+void socketOperation(char* firstDirName,char *ipAddress, int portNumber){
 
 	//printf("In thread\n");
   //printf("client deneme2 \n");
@@ -98,7 +107,7 @@ void socketOperation(char* firstDirName){
   //Set port number, using htons function 
     serverAddr.sin_port = htons(8080);
  //Set IP address to localhost
-    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    serverAddr.sin_addr.s_addr = inet_addr(ipAddress);
     memset(serverAddr.sin_zero, '\0', sizeof serverAddr.sin_zero);
     //Connect the socket to the server using the address
     addr_size = sizeof serverAddr;
@@ -112,7 +121,7 @@ void socketOperation(char* firstDirName){
     {
             printf("Send failed\n");
     }
-    recv(clientSocket,synch,sizeof(synch),0);
+    //recv(clientSocket,synch,sizeof(synch),0);
     fileOperation(dirName,clientSocket);
     //printf("client deneme 8 \n");
     //Read the message from the server into the buffer
@@ -154,17 +163,16 @@ void fileOperation(char* dirName,int socket){
 			sprintf(fileInformation.file_content,"%s","redundant");
 			//printf("client file content: %s \n",fileInformation.file_content);
 			send(socket,&fileInformation.rec_mode,sizeof(fileInformation.rec_mode),0);
-			recv(socket , synch , sizeof(synch) , 0);
+			//recv(socket , synch , sizeof(synch) , 0);
 			send(socket,fileInformation.filename,sizeof(fileInformation.filename),0);
-			recv(socket , synch , sizeof(synch) , 0);
+			//recv(socket , synch , sizeof(synch) , 0);
 			send(socket,fileInformation.file_content,sizeof(fileInformation.file_content),0);
-			recv(socket , synch , sizeof(synch) , 0);
+			//recv(socket , synch , sizeof(synch) , 0);
 			send(socket,&fileInformation.mode,sizeof(fileInformation.mode),0);
-			recv(socket , synch , sizeof(synch) , 0);			
+			//recv(socket , synch , sizeof(synch) , 0);			
 			fileOperation(innerDirectoryPath,clientSocket);
 			fileInformation.rec_mode=1;
   			send(socket,&fileInformation.rec_mode,sizeof(fileInformation.rec_mode),0);
-			recv(socket , synch , sizeof(synch) , 0);
 		}
      		else{
 			printf("dosya icin geldim \n");
@@ -196,13 +204,13 @@ void fileOperation(char* dirName,int socket){
 			fileInformation.mode=0;
 			
 			send(socket,&fileInformation.rec_mode,sizeof(fileInformation.rec_mode),0);
-			recv(socket , synch , sizeof(synch) , 0);
+			//recv(socket , synch , sizeof(synch) , 0);
 			send(socket,fileInformation.filename,sizeof(fileInformation.filename),0);
-			recv(socket , synch , sizeof(synch) , 0);
+			//recv(socket , synch , sizeof(synch) , 0);
 			send(socket,fileInformation.file_content,sizeof(fileInformation.file_content),0);
-			recv(socket , synch , sizeof(synch) , 0);
+			//recv(socket , synch , sizeof(synch) , 0);
 			send(socket,&fileInformation.mode,sizeof(fileInformation.mode),0);
-			recv(socket , synch , sizeof(synch) , 0);
+			//recv(socket , synch , sizeof(synch) , 0);
 			structSize++;
 			indexF++;
 		
@@ -278,8 +286,9 @@ void findModifiedFile(){
 				
 				if(strcmp(modifiedOperation[k].filePath,modifiedOperationForFunction[i].filePath)==0){
 					//printf("\n IKI ESIT DOSYA BULDUM \n ");
-					if(strcmp(modifiedOperation[k].modifiedTime,modifiedOperationForFunction[i].modifiedTime)!=0){
-						printf("DOSYA DEGISTI \n");					
+					if(strcmp(modifiedOperation[k].modifiedTime,modifiedOperationForFunction[i].modifiedTime)!=0){				
+						//printf("DOSYA DEGISTI \n");
+						changeFile=1;					
 					}
 					
 				}
