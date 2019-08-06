@@ -15,7 +15,7 @@
 #define PATH_LEN 256
 #define CONTENT_LEN 100000
 #define R_FLAGS O_RDONLY 
-
+#define NUMBER_OF_FILES 1024
 typedef struct {   
 	char file_content[CONTENT_LEN];   
 	char filename[FILE_LEN];
@@ -44,13 +44,14 @@ int indexF=0;
 int changeFile=0;
 
 int main(int argc, char* argv[]){
-  int i=0;
+  int fileNum=0;
   int control=0;
   int portNumber=atoi(argv[3]);  
   socketOperation(argv[1],argv[2],portNumber);
   indexF=0;
+
   
-  while(i<100){
+  while(fileNum<NUMBER_OF_FILES){
 	
 	modified(argv[1]);
   	indexF=0;
@@ -64,7 +65,7 @@ int main(int argc, char* argv[]){
 		control ++;
 	}
 	changeFile=0;
-	i++;
+	fileNum++;
   } 
   return 0;
 }
